@@ -1,0 +1,6 @@
+@RailCat.Orders.Api_HostAddress = http://localhost:5105
+
+GET {{RailCat.Orders.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
