@@ -60,3 +60,4 @@ public static class EscPosHelper
         return sb.ToString();
     }
 }
+

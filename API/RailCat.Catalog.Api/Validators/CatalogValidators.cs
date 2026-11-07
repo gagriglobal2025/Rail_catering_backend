@@ -22,3 +22,4 @@ public class EmployeeVerificationValidator : AbstractValidator<EmployeeVerificat
         RuleFor(x => x.DeviceToken).NotEmpty().WithMessage("Device token fingerprint is required.");
     }
 }
+

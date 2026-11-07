@@ -17,3 +17,4 @@ public class SettlementDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SettlementDbContext).Assembly);
     }
 }
+

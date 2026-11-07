@@ -58,3 +58,4 @@ public class DailySalesSummaryDto
     public decimal CashRevenue { get; set; }
     public decimal CardRevenue { get; set; }
 }
+

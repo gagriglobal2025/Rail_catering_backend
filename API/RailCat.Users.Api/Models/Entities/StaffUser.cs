@@ -16,3 +16,4 @@ public class StaffUser
     public StaffCredential? Credential { get; set; }
     public ICollection<StaffSession> Sessions { get; set; } = new List<StaffSession>();
 }
+

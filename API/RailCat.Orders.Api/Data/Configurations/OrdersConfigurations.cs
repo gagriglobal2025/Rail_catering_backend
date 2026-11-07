@@ -96,3 +96,4 @@ public class PrintSpoolConfiguration : IEntityTypeConfiguration<PrintSpool>
         builder.Property(p => p.PrintedAt).HasColumnName("printed_at");
     }
 }
+

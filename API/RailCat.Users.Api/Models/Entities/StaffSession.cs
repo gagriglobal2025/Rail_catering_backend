@@ -12,3 +12,4 @@ public class StaffSession
 
     public StaffUser? User { get; set; }
 }
+

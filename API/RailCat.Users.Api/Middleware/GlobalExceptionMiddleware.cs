@@ -52,3 +52,4 @@ public class GlobalExceptionMiddleware
         return context.Response.WriteAsync(JsonSerializer.Serialize(response));
     }
 }
+

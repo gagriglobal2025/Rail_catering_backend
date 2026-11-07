@@ -69,3 +69,4 @@ public class StaffSessionConfiguration : IEntityTypeConfiguration<StaffSession>
         builder.Property(s => s.CreatedAt).HasColumnName("created_at");
     }
 }
+

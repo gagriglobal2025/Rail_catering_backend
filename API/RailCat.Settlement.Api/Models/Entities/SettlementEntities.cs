@@ -44,3 +44,4 @@ public class DailySalesSummary
     public decimal CardRevenue { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
+

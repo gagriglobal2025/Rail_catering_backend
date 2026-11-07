@@ -63,3 +63,4 @@ public class RailwayConcessionEmployee
     public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
     public DateTime? VerifiedAt { get; set; }
 }
+

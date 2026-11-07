@@ -70,3 +70,4 @@ public static class PasswordHelper
         return computed == storedHash;
     }
 }
+

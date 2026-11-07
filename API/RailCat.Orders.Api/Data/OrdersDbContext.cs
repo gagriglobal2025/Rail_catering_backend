@@ -18,3 +18,4 @@ public class OrdersDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrdersDbContext).Assembly);
     }
 }
+

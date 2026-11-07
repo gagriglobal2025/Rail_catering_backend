@@ -25,3 +25,4 @@ public class CreateStaffUserValidator : AbstractValidator<CreateStaffUserDto>
         RuleFor(x => x.Password).NotEmpty().MinimumLength(6);
     }
 }
+

@@ -88,3 +88,4 @@ public class RailwayConcessionEmployeeConfiguration : IEntityTypeConfiguration<R
         builder.Property(e => e.VerifiedAt).HasColumnName("verified_at");
     }
 }
+

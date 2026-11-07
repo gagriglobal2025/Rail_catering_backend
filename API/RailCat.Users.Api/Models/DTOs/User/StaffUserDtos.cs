@@ -30,3 +30,4 @@ public class StaffUserResponseDto
     public DateTime? LastActiveAt { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+

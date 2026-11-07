@@ -64,3 +64,4 @@ public class DailySalesSummaryConfiguration : IEntityTypeConfiguration<DailySale
         builder.Property(d => d.UpdatedAt).HasColumnName("updated_at");
     }
 }
+

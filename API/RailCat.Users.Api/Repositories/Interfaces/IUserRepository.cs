@@ -12,3 +12,4 @@ public interface IUserRepository
     Task DeleteAsync(StaffUser user);
     Task SaveChangesAsync();
 }
+

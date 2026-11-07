@@ -10,3 +10,4 @@ public class StaffCredential
 
     public StaffUser? User { get; set; }
 }
+

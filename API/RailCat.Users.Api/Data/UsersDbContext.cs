@@ -17,3 +17,4 @@ public class UsersDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly);
     }
 }
+

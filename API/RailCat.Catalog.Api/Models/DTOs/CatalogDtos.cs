@@ -78,3 +78,4 @@ public class RegisterEmployeeDto
     public string? ShiftPolicy { get; set; }
     public string? IdCardUrl { get; set; }
 }
+
