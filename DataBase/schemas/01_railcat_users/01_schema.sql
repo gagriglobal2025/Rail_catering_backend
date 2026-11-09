@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS staff_users (
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(120) NOT NULL UNIQUE,
     phone_number VARCHAR(20),
+    station_id VARCHAR(30) NOT NULL DEFAULT 'SC',
     system_role VARCHAR(30) NOT NULL CHECK (system_role IN ('ADMIN', 'COUNTER_OPERATOR', 'KITCHEN_STAFF')),
     account_status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (account_status IN ('ACTIVE', 'INACTIVE')),
     last_active_at TIMESTAMPTZ,

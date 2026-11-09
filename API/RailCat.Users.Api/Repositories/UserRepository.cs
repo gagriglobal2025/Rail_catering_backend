@@ -21,11 +21,21 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.UserId == id);
     }
 
-    public async Task<StaffUser?> GetByEmailOrEmployeeIdAsync(string identifier)
+    public async Task<StaffUser?> GetByIdentifierAsync(string identifier)
     {
+        var cleanInput = identifier.Trim().ToLower();
+        var digitsOnly = new string(cleanInput.Where(char.IsDigit).ToArray());
+
         return await _context.StaffUsers
             .Include(u => u.Credential)
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == identifier.ToLower() || u.EmployeeId.ToLower() == identifier.ToLower());
+            .FirstOrDefaultAsync(u =>
+                u.Email.ToLower() == cleanInput ||
+                u.EmployeeId.ToLower() == cleanInput ||
+                (u.PhoneNumber != null && (
+                    u.PhoneNumber == cleanInput ||
+                    (digitsOnly.Length >= 10 && u.PhoneNumber.EndsWith(digitsOnly.Substring(digitsOnly.Length - 10)))
+                ))
+            );
     }
 
     public async Task<IEnumerable<StaffUser>> GetAllAsync()
@@ -55,9 +65,31 @@ public class UserRepository : IUserRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task UpdatePasswordAsync(Guid userId, string newPasswordHash)
+    {
+        var cred = await _context.StaffCredentials.FirstOrDefaultAsync(c => c.UserId == userId);
+        if (cred != null)
+        {
+            cred.PasswordHash = newPasswordHash;
+            cred.FailedLogins = 0;
+            cred.LockedUntil = null;
+            cred.PasswordUpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task ClearUserSessionsAsync(Guid userId)
+    {
+        var sessions = await _context.StaffSessions.Where(s => s.UserId == userId).ToListAsync();
+        if (sessions.Any())
+        {
+            _context.StaffSessions.RemoveRange(sessions);
+            await _context.SaveChangesAsync();
+        }
+    }
+
     public async Task SaveChangesAsync()
     {
         await _context.SaveChangesAsync();
     }
 }
-

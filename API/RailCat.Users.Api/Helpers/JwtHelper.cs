@@ -33,6 +33,7 @@ public class JwtHelper
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim("employee_id", user.EmployeeId),
             new Claim("full_name", user.FullName),
+            new Claim("station_id", user.StationId),
             new Claim(ClaimTypes.Role, user.SystemRole),
             new Claim("role", user.SystemRole)
         };
