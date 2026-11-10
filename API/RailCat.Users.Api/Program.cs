@@ -28,6 +28,36 @@ builder.Services.AddEndpointsApiExplorer();
 // Add Users API service extensions (DB, Repos, Services, Auth)
 builder.Services.AddUsersApiServices(builder.Configuration);
 
+// Configure CORS for Admin Web and Customer Mobile Web frontends
+var allowedOrigins = builder.Configuration.GetSection("CorsSettings:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:3000", "http://localhost:3001", "https://mobilecatering.gagriglobal.com", "https://catering.gagriglobal.com" };
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("RailCatCorsPolicy", policy =>
+    {
+        policy.SetIsOriginAllowed(origin =>
+              {
+                  if (string.IsNullOrEmpty(origin)) return false;
+                  if (allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)) return true;
+                  try
+                  {
+                      var uri = new Uri(origin);
+                      return uri.Host == "localhost" 
+                          || uri.Host == "127.0.0.1" 
+                          || uri.Host.EndsWith("gagriglobal.com", StringComparison.OrdinalIgnoreCase);
+                  }
+                  catch
+                  {
+                      return false;
+                  }
+              })
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 // Global Exception Handler
@@ -45,6 +75,8 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseHttpsRedirection();
+
+app.UseCors("RailCatCorsPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();
