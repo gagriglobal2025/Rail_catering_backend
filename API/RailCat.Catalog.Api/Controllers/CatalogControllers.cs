@@ -193,6 +193,7 @@ public class EmployeesController : ControllerBase
     }
 
     [HttpPost("verify-concession")]
+    [HttpPost("verify")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(EmployeeVerificationResponseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> VerifyConcession([FromBody] EmployeeVerificationRequestDto dto)

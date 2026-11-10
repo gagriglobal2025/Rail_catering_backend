@@ -7,6 +7,12 @@ public class LoginRequestDto
     /// </summary>
     public string UserLogin { get; set; } = string.Empty;
 
+    public string EmployeeIdOrEmail
+    {
+        get => UserLogin;
+        set => UserLogin = !string.IsNullOrEmpty(value) ? value : UserLogin;
+    }
+
     public string Password { get; set; } = string.Empty;
 }
 
