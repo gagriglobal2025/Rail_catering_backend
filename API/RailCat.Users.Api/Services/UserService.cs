@@ -1,61 +1,10 @@
 using RailCat.Users.Api.Helpers;
-using RailCat.Users.Api.Models.DTOs.Auth;
 using RailCat.Users.Api.Models.DTOs.User;
 using RailCat.Users.Api.Models.Entities;
 using RailCat.Users.Api.Repositories.Interfaces;
 using RailCat.Users.Api.Services.Interfaces;
 
 namespace RailCat.Users.Api.Services;
-
-public class AuthService : IAuthService
-{
-    private readonly IUserRepository _userRepository;
-    private readonly JwtHelper _jwtHelper;
-
-    public AuthService(IUserRepository userRepository, JwtHelper jwtHelper)
-    {
-        _userRepository = userRepository;
-        _jwtHelper = jwtHelper;
-    }
-
-    public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
-    {
-        var user = await _userRepository.GetByEmailOrEmployeeIdAsync(request.EmailOrEmployeeId);
-        if (user == null || user.Credential == null)
-        {
-            throw new UnauthorizedAccessException("Invalid credentials.");
-        }
-
-        if (user.AccountStatus != "ACTIVE")
-        {
-            throw new UnauthorizedAccessException("Account is disabled.");
-        }
-
-        if (!PasswordHelper.VerifyPassword(request.Password, user.Credential.PasswordHash))
-        {
-            user.Credential.FailedLogins++;
-            await _userRepository.SaveChangesAsync();
-            throw new UnauthorizedAccessException("Invalid credentials.");
-        }
-
-        user.Credential.FailedLogins = 0;
-        user.LastActiveAt = DateTime.UtcNow;
-        await _userRepository.SaveChangesAsync();
-
-        var (token, expiresAt) = _jwtHelper.GenerateToken(user);
-
-        return new LoginResponseDto
-        {
-            Token = token,
-            ExpiresAt = expiresAt,
-            UserId = user.UserId,
-            EmployeeId = user.EmployeeId,
-            FullName = user.FullName,
-            Email = user.Email,
-            Role = user.SystemRole
-        };
-    }
-}
 
 public class UserService : IUserService
 {
@@ -86,6 +35,7 @@ public class UserService : IUserService
             FullName = request.FullName,
             Email = request.Email,
             PhoneNumber = request.PhoneNumber,
+            StationId = string.IsNullOrWhiteSpace(request.StationId) ? "SC" : request.StationId.Trim(),
             SystemRole = request.SystemRole,
             AccountStatus = "ACTIVE",
             CreatedAt = DateTime.UtcNow,
@@ -107,6 +57,7 @@ public class UserService : IUserService
 
         user.FullName = request.FullName;
         user.PhoneNumber = request.PhoneNumber;
+        if (!string.IsNullOrWhiteSpace(request.StationId)) user.StationId = request.StationId.Trim();
         user.SystemRole = request.SystemRole;
         user.AccountStatus = request.AccountStatus;
 
@@ -130,10 +81,10 @@ public class UserService : IUserService
         FullName = user.FullName,
         Email = user.Email,
         PhoneNumber = user.PhoneNumber,
+        StationId = user.StationId,
         SystemRole = user.SystemRole,
         AccountStatus = user.AccountStatus,
         LastActiveAt = user.LastActiveAt,
         CreatedAt = user.CreatedAt
     };
 }
-

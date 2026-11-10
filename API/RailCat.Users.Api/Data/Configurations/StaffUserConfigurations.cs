@@ -20,6 +20,7 @@ public class StaffUserConfiguration : IEntityTypeConfiguration<StaffUser>
         builder.HasIndex(u => u.Email).IsUnique();
 
         builder.Property(u => u.PhoneNumber).HasColumnName("phone_number").HasMaxLength(20);
+        builder.Property(u => u.StationId).HasColumnName("station_id").HasMaxLength(30).IsRequired().HasDefaultValue("SC");
         builder.Property(u => u.SystemRole).HasColumnName("system_role").HasMaxLength(30).IsRequired();
         builder.Property(u => u.AccountStatus).HasColumnName("account_status").HasMaxLength(20).IsRequired();
         builder.Property(u => u.LastActiveAt).HasColumnName("last_active_at");

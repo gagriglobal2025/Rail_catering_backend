@@ -8,35 +8,16 @@ namespace RailCat.Users.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
-{
-    private readonly IAuthService _authService;
-
-    public AuthController(IAuthService authService)
-    {
-        _authService = authService;
-    }
-
-    [HttpPost("login")]
-    [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
-    {
-        var response = await _authService.LoginAsync(request);
-        return Ok(response);
-    }
-}
-
-[ApiController]
-[Route("api/[controller]")]
 [Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IAuthService _authService;
 
-    public UsersController(IUserService userService)
+    public UsersController(IUserService userService, IAuthService authService)
     {
         _userService = userService;
+        _authService = authService;
     }
 
     [HttpGet]
@@ -88,5 +69,23 @@ public class UsersController : ControllerBase
         if (!success) return NotFound(new { message = $"Staff member with ID {id} not found." });
         return NoContent();
     }
-}
 
+    /// <summary>
+    /// Admin-driven password reset for a staff user (e.g. Cashier forgot POS password)
+    /// </summary>
+    [HttpPost("{id:guid}/reset-password")]
+    [Authorize(Roles = "ADMIN")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResetPassword(Guid id, [FromBody] AdminResetPasswordDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
+        {
+            return BadRequest(new { message = "New password must be at least 6 characters long." });
+        }
+
+        await _authService.ResetPasswordByAdminAsync(id, request.NewPassword);
+        return Ok(new { message = "Password reset successfully by Admin." });
+    }
+}

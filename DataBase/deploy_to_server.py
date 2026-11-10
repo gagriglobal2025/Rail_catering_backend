@@ -126,6 +126,19 @@ def deploy():
             cur.execute(sql_content)
             print("OK")
 
+        # Grant full access to dedicated service user
+        role = svc['role_name']
+        cur.execute(sql.SQL("""
+            GRANT ALL ON SCHEMA public TO {role};
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {role};
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO {role};
+            GRANT ALL PRIVILEGES ON ALL ROUTINES IN SCHEMA public TO {role};
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {role};
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {role};
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO {role};
+        """).format(role=sql.Identifier(role)))
+        print(f"     Granted permissions on schema public to {role}")
+
         cur.close()
         conn.close()
 

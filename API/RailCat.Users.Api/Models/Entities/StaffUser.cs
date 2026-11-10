@@ -7,6 +7,7 @@ public class StaffUser
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
+    public string StationId { get; set; } = "SC";
     public string SystemRole { get; set; } = "COUNTER_OPERATOR"; // ADMIN, COUNTER_OPERATOR, KITCHEN_STAFF
     public string AccountStatus { get; set; } = "ACTIVE"; // ACTIVE, INACTIVE
     public DateTime? LastActiveAt { get; set; }

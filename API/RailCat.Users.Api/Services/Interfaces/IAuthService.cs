@@ -6,6 +6,11 @@ namespace RailCat.Users.Api.Services.Interfaces;
 public interface IAuthService
 {
     Task<LoginResponseDto> LoginAsync(LoginRequestDto request);
+    Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordRequestDto request);
+    Task<bool> ResetPasswordByAdminAsync(Guid userId, string newPassword);
+    Task<UserProfileResponseDto> GetProfileAsync(Guid userId);
+    Task<UserProfileResponseDto> UpdateProfileAsync(Guid userId, UpdateProfileDto request);
+    Task<bool> LogoutAsync(Guid userId);
 }
 
 public interface IUserService
@@ -16,4 +21,3 @@ public interface IUserService
     Task<StaffUserResponseDto?> UpdateUserAsync(Guid id, UpdateStaffUserDto request);
     Task<bool> DeleteUserAsync(Guid id);
 }
-
