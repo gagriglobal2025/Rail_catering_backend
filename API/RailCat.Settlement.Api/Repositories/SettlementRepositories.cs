@@ -7,7 +7,9 @@ namespace RailCat.Settlement.Api.Repositories;
 public interface IShiftRepository
 {
     Task<CashierShift?> GetActiveShiftByCashierAsync(Guid cashierUserId);
+    Task<CashierShift?> GetAnyActiveShiftAsync();
     Task<CashierShift?> GetByIdAsync(Guid shiftId);
+    Task<IEnumerable<CashierShift>> GetShiftsAsync(Guid? cashierUserId, string? status, int limit = 50);
     Task<CashierShift> AddAsync(CashierShift shift);
     Task UpdateAsync(CashierShift shift);
 }
@@ -16,6 +18,7 @@ public interface IPaymentRepository
 {
     Task<PaymentTransaction> AddAsync(PaymentTransaction payment);
     Task<IEnumerable<PaymentTransaction>> GetByShiftIdAsync(Guid shiftId);
+    Task<IEnumerable<PaymentTransaction>> GetFilteredPaymentsAsync(Guid? shiftId, Guid? orderId, int limit = 50);
 }
 
 public interface IReportRepository
@@ -39,11 +42,25 @@ public class ShiftRepository : IShiftRepository
             .FirstOrDefaultAsync(s => s.CashierUserId == cashierUserId && s.ShiftStatus == "OPEN");
     }
 
+    public async Task<CashierShift?> GetAnyActiveShiftAsync()
+    {
+        return await _context.CashierShifts
+            .FirstOrDefaultAsync(s => s.ShiftStatus == "OPEN");
+    }
+
     public async Task<CashierShift?> GetByIdAsync(Guid shiftId)
     {
         return await _context.CashierShifts
             .Include(s => s.Transactions)
             .FirstOrDefaultAsync(s => s.ShiftId == shiftId);
+    }
+
+    public async Task<IEnumerable<CashierShift>> GetShiftsAsync(Guid? cashierUserId, string? status, int limit = 50)
+    {
+        var query = _context.CashierShifts.AsQueryable();
+        if (cashierUserId.HasValue) query = query.Where(s => s.CashierUserId == cashierUserId.Value);
+        if (!string.IsNullOrWhiteSpace(status)) query = query.Where(s => s.ShiftStatus == status);
+        return await query.OrderByDescending(s => s.OpenedAt).Take(limit).ToListAsync();
     }
 
     public async Task<CashierShift> AddAsync(CashierShift shift)
@@ -83,6 +100,14 @@ public class PaymentRepository : IPaymentRepository
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<PaymentTransaction>> GetFilteredPaymentsAsync(Guid? shiftId, Guid? orderId, int limit = 50)
+    {
+        var query = _context.PaymentTransactions.AsQueryable();
+        if (shiftId.HasValue) query = query.Where(p => p.ShiftId == shiftId.Value);
+        if (orderId.HasValue) query = query.Where(p => p.OrderId == orderId.Value);
+        return await query.OrderByDescending(p => p.CreatedAt).Take(limit).ToListAsync();
+    }
 }
 
 public class ReportRepository : IReportRepository
@@ -102,15 +127,15 @@ public class ReportRepository : IReportRepository
     public async Task UpdateSummaryAsync(DailySalesSummary summary)
     {
         summary.UpdatedAt = DateTime.UtcNow;
-        if (await _context.DailySalesSummaries.AnyAsync(s => s.SummaryDate == summary.SummaryDate))
+        var existing = await _context.DailySalesSummaries.FirstOrDefaultAsync(s => s.SummaryDate == summary.SummaryDate);
+        if (existing == null)
         {
-            _context.DailySalesSummaries.Update(summary);
+            await _context.DailySalesSummaries.AddAsync(summary);
         }
         else
         {
-            await _context.DailySalesSummaries.AddAsync(summary);
+            _context.DailySalesSummaries.Update(summary);
         }
         await _context.SaveChangesAsync();
     }
 }
-

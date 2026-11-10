@@ -9,11 +9,14 @@ public interface IShiftService
     Task<CashierShiftResponseDto> OpenShiftAsync(OpenShiftRequestDto dto);
     Task<CashierShiftResponseDto?> CloseShiftAsync(Guid shiftId, CloseShiftRequestDto dto);
     Task<CashierShiftResponseDto?> GetShiftByIdAsync(Guid shiftId);
+    Task<CashierShiftResponseDto?> GetActiveShiftAsync(Guid? cashierUserId);
+    Task<IEnumerable<CashierShiftResponseDto>> GetShiftsAsync(Guid? cashierUserId, string? status, int limit = 50);
 }
 
 public interface IPaymentService
 {
     Task<PaymentResponseDto> ProcessPaymentAsync(ProcessPaymentRequestDto dto);
+    Task<IEnumerable<PaymentResponseDto>> GetPaymentsAsync(Guid? shiftId, Guid? orderId, int limit = 50);
 }
 
 public interface IReportService
@@ -68,6 +71,26 @@ public class ShiftService : IShiftService
     {
         var shift = await _repo.GetByIdAsync(shiftId);
         return shift == null ? null : MapToDto(shift);
+    }
+
+    public async Task<CashierShiftResponseDto?> GetActiveShiftAsync(Guid? cashierUserId)
+    {
+        CashierShift? shift;
+        if (cashierUserId.HasValue)
+        {
+            shift = await _repo.GetActiveShiftByCashierAsync(cashierUserId.Value);
+        }
+        else
+        {
+            shift = await _repo.GetAnyActiveShiftAsync();
+        }
+        return shift == null ? null : MapToDto(shift);
+    }
+
+    public async Task<IEnumerable<CashierShiftResponseDto>> GetShiftsAsync(Guid? cashierUserId, string? status, int limit = 50)
+    {
+        var shifts = await _repo.GetShiftsAsync(cashierUserId, status, limit);
+        return shifts.Select(MapToDto);
     }
 
     private static CashierShiftResponseDto MapToDto(CashierShift s) => new()
@@ -165,6 +188,21 @@ public class PaymentService : IPaymentService
             CreatedAt = created.CreatedAt
         };
     }
+
+    public async Task<IEnumerable<PaymentResponseDto>> GetPaymentsAsync(Guid? shiftId, Guid? orderId, int limit = 50)
+    {
+        var payments = await _paymentRepo.GetFilteredPaymentsAsync(shiftId, orderId, limit);
+        return payments.Select(p => new PaymentResponseDto
+        {
+            PaymentId = p.PaymentId,
+            OrderId = p.OrderId,
+            Amount = p.Amount,
+            PaymentMethod = p.PaymentMethod,
+            GatewayReference = p.GatewayReference,
+            PaymentStatus = p.PaymentStatus,
+            CreatedAt = p.CreatedAt
+        });
+    }
 }
 
 public class ReportService : IReportService
@@ -211,4 +249,3 @@ public class ReportService : IReportService
         };
     }
 }
-

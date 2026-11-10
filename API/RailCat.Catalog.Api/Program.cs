@@ -71,9 +71,11 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 app.UseCors("RailCatCorsPolicy");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Root health-check endpoint

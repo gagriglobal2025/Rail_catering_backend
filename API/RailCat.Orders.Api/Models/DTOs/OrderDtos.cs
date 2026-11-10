@@ -36,6 +36,13 @@ public class OrderResponseDto
     public string PaymentStatus { get; set; } = string.Empty;
     public string? PaymentMethod { get; set; }
     public DateTime PlacedAt { get; set; }
+    public DateTime? PaidAt { get; set; }
+    public DateTime? PreparingAt { get; set; }
+    public DateTime? ReadyAt { get; set; }
+    public DateTime? DeliveredAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
     public List<OrderItemDto> Items { get; set; } = new();
 }
 
@@ -67,6 +74,11 @@ public class UpdateOrderStatusDto
     public string NextStatus { get; set; } = string.Empty; // PREPARING, READY, DELIVERED, CANCELLED
 }
 
+public class AcceptOrderPaymentDto
+{
+    public string PaymentMethod { get; set; } = "UPI"; // UPI, CASH, CARD, OTHERS
+}
+
 public class PrintSpoolResponseDto
 {
     public Guid JobId { get; set; }
@@ -76,4 +88,3 @@ public class PrintSpoolResponseDto
     public string PrintStatus { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }
-

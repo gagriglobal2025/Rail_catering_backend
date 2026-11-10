@@ -74,6 +74,7 @@ app.UseHttpsRedirection();
 
 app.UseCors("RailCatCorsPolicy");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Root health-check endpoint
