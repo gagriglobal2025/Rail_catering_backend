@@ -10,6 +10,10 @@ public interface IOrderService
     Task<OrderResponseDto> CreateOrderAsync(CreateOrderRequestDto dto);
     Task<OrderResponseDto?> GetOrderByIdAsync(Guid id);
     Task<OrderResponseDto?> GetByOrderNumberAsync(string orderNumber);
+    Task<IEnumerable<OrderResponseDto>> GetOrdersAsync(string? status, string? paymentStatus, string? search, int limit = 50);
+    Task<OrderResponseDto?> AcceptPaymentAsync(Guid orderId, AcceptOrderPaymentDto dto);
+    Task<OrderResponseDto?> UpdateOrderStatusAsync(Guid orderId, string nextStatus);
+    Task<bool> MarkPrintJobPrintedAsync(Guid jobId);
 }
 
 public interface IKitchenService
@@ -102,7 +106,7 @@ public class OrderService : IOrderService
             });
         }
 
-        // Auto-spool KOT if paid
+        // Auto-spool KOT & Receipt if paid
         if (order.PaymentStatus == "PAID")
         {
             order.PrintJobs.Add(new PrintSpool
@@ -135,6 +139,63 @@ public class OrderService : IOrderService
         return order == null ? null : MapToDto(order);
     }
 
+    public async Task<IEnumerable<OrderResponseDto>> GetOrdersAsync(string? status, string? paymentStatus, string? search, int limit = 50)
+    {
+        var orders = await _repo.GetFilteredOrdersAsync(status, paymentStatus, search, limit);
+        return orders.Select(MapToDto);
+    }
+
+    public async Task<OrderResponseDto?> AcceptPaymentAsync(Guid orderId, AcceptOrderPaymentDto dto)
+    {
+        var order = await _repo.GetByIdAsync(orderId);
+        if (order == null) return null;
+
+        order.PaymentStatus = "PAID";
+        order.PaymentMethod = dto.PaymentMethod;
+        order.PaidAt = DateTime.UtcNow;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        // When payment is completed at counter, spool KOT & Receipt
+        await _repo.AddPrintSpoolAsync(new PrintSpool
+        {
+            OrderId = order.OrderId,
+            JobType = "KOT",
+            RawContent = EscPosHelper.GenerateKotText(order),
+            PrintStatus = "PENDING"
+        });
+
+        await _repo.AddPrintSpoolAsync(new PrintSpool
+        {
+            OrderId = order.OrderId,
+            JobType = "RECEIPT",
+            RawContent = EscPosHelper.GenerateReceiptText(order),
+            PrintStatus = "PENDING"
+        });
+
+        await _repo.UpdateAsync(order);
+        return MapToDto(order);
+    }
+
+    public async Task<OrderResponseDto?> UpdateOrderStatusAsync(Guid orderId, string nextStatus)
+    {
+        var order = await _repo.GetByIdAsync(orderId);
+        if (order == null) return null;
+
+        order.OrderStatus = nextStatus;
+        if (nextStatus == "PREPARING") order.PreparingAt = DateTime.UtcNow;
+        else if (nextStatus == "READY") order.ReadyAt = DateTime.UtcNow;
+        else if (nextStatus == "DELIVERED") order.DeliveredAt = DateTime.UtcNow;
+        else if (nextStatus == "CANCELLED") order.CancelledAt = DateTime.UtcNow;
+
+        await _repo.UpdateAsync(order);
+        return MapToDto(order);
+    }
+
+    public async Task<bool> MarkPrintJobPrintedAsync(Guid jobId)
+    {
+        return await _repo.MarkPrintJobPrintedAsync(jobId);
+    }
+
     private static OrderResponseDto MapToDto(Order o) => new()
     {
         OrderId = o.OrderId,
@@ -152,6 +213,13 @@ public class OrderService : IOrderService
         PaymentStatus = o.PaymentStatus,
         PaymentMethod = o.PaymentMethod,
         PlacedAt = o.PlacedAt,
+        PaidAt = o.PaidAt,
+        PreparingAt = o.PreparingAt,
+        ReadyAt = o.ReadyAt,
+        DeliveredAt = o.DeliveredAt,
+        CancelledAt = o.CancelledAt,
+        CreatedAt = o.CreatedAt,
+        UpdatedAt = o.UpdatedAt,
         Items = o.Items.Select(i => new OrderItemDto
         {
             ItemId = i.ItemId,
@@ -214,4 +282,3 @@ public class KitchenService : IKitchenService
         return true;
     }
 }
-

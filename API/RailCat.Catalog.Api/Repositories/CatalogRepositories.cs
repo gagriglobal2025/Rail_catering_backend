@@ -11,15 +11,20 @@ public interface IMenuRepository
     Task<MenuItem?> GetMenuItemByIdAsync(string id);
     Task<MenuItem> AddMenuItemAsync(MenuItem item);
     Task UpdateMenuItemAsync(MenuItem item);
+    Task<bool> DeleteMenuItemAsync(string id);
 }
 
 public interface IEmployeeRepository
 {
     Task<IEnumerable<RailwayConcessionEmployee>> GetAllEmployeesAsync();
+    Task<IEnumerable<RailwayConcessionEmployee>> GetFilteredEmployeesAsync(string? status = null, string? search = null);
     Task<RailwayConcessionEmployee?> GetByEmployeeIdAsync(string employeeId);
     Task<RailwayConcessionEmployee> AddAsync(RailwayConcessionEmployee employee);
     Task UpdateAsync(RailwayConcessionEmployee employee);
     Task<ConcessionPolicy?> GetActiveConcessionPolicyAsync();
+    Task<IEnumerable<ConcessionPolicy>> GetAllConcessionPoliciesAsync();
+    Task<ConcessionPolicy?> GetConcessionPolicyByIdAsync(string policyId);
+    Task UpdateConcessionPolicyAsync(ConcessionPolicy policy);
 }
 
 public class MenuRepository : IMenuRepository
@@ -67,6 +72,15 @@ public class MenuRepository : IMenuRepository
         _context.MenuItems.Update(item);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<bool> DeleteMenuItemAsync(string id)
+    {
+        var item = await _context.MenuItems.FirstOrDefaultAsync(i => i.ItemId == id);
+        if (item == null) return false;
+        _context.MenuItems.Remove(item);
+        await _context.SaveChangesAsync();
+        return true;
+    }
 }
 
 public class EmployeeRepository : IEmployeeRepository
@@ -83,6 +97,30 @@ public class EmployeeRepository : IEmployeeRepository
         return await _context.RailwayConcessionEmployees
             .OrderBy(e => e.FullName)
             .ToListAsync();
+    }
+
+    public async Task<IEnumerable<RailwayConcessionEmployee>> GetFilteredEmployeesAsync(string? status = null, string? search = null)
+    {
+        var query = _context.RailwayConcessionEmployees.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) && status.ToUpper() != "ALL")
+        {
+            var s = status.Trim().ToUpper();
+            query = query.Where(e => e.VerificationStatus == s);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var q = search.Trim().ToLower();
+            query = query.Where(e =>
+                e.FullName.ToLower().Contains(q) ||
+                e.EmployeeId.ToLower().Contains(q) ||
+                (e.DeviceName != null && e.DeviceName.ToLower().Contains(q)) ||
+                (e.Department != null && e.Department.ToLower().Contains(q))
+            );
+        }
+
+        return await query.OrderByDescending(e => e.RegisteredAt).ToListAsync();
     }
 
     public async Task<RailwayConcessionEmployee?> GetByEmployeeIdAsync(string employeeId)
@@ -108,6 +146,25 @@ public class EmployeeRepository : IEmployeeRepository
     {
         return await _context.ConcessionPolicies
             .FirstOrDefaultAsync(p => p.IsActive && p.CustomerType == "RAILWAY_EMPLOYEE");
+    }
+
+    public async Task<IEnumerable<ConcessionPolicy>> GetAllConcessionPoliciesAsync()
+    {
+        return await _context.ConcessionPolicies
+            .OrderBy(p => p.PolicyName)
+            .ToListAsync();
+    }
+
+    public async Task<ConcessionPolicy?> GetConcessionPolicyByIdAsync(string policyId)
+    {
+        return await _context.ConcessionPolicies
+            .FirstOrDefaultAsync(p => p.PolicyId.ToLower() == policyId.ToLower());
+    }
+
+    public async Task UpdateConcessionPolicyAsync(ConcessionPolicy policy)
+    {
+        _context.ConcessionPolicies.Update(policy);
+        await _context.SaveChangesAsync();
     }
 }
 

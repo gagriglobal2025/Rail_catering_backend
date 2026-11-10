@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace RailCat.Catalog.Api.Models.DTOs;
 
 public class CategoryResponseDto
@@ -30,13 +32,13 @@ public class MenuItemResponseDto
 
 public class CreateMenuItemDto
 {
-    public string ItemId { get; set; } = string.Empty;
     public string CategoryId { get; set; } = string.Empty;
     public string ItemName { get; set; } = string.Empty;
     public string ItemDescription { get; set; } = string.Empty;
     public decimal BasePrice { get; set; }
     public string EmojiIcon { get; set; } = "🍲";
     public string? ImageUrl { get; set; }
+    public IFormFile? ImageFile { get; set; }
     public bool IsVegetarian { get; set; } = true;
     public bool IsBestseller { get; set; }
     public bool IsSpicy { get; set; }
@@ -48,6 +50,71 @@ public class UpdateMenuItemAvailabilityDto
 {
     public bool IsAvailable { get; set; }
     public bool IsSoldOut { get; set; }
+}
+
+public class UpdateMenuItemDto
+{
+    public string? CategoryId { get; set; }
+    public string? ItemName { get; set; }
+    public string? ItemDescription { get; set; }
+    public decimal? BasePrice { get; set; }
+    public string? EmojiIcon { get; set; }
+    public string? ImageUrl { get; set; }
+    public IFormFile? ImageFile { get; set; }
+    public bool? IsVegetarian { get; set; }
+    public bool? IsAvailable { get; set; }
+    public bool? IsSoldOut { get; set; }
+    public bool? IsBestseller { get; set; }
+    public bool? IsSpicy { get; set; }
+    public bool? IsKidsChoice { get; set; }
+    public string? PrepTime { get; set; }
+}
+
+public class ConcessionPolicyDto
+{
+    public string PolicyId { get; set; } = string.Empty;
+    public string PolicyName { get; set; } = string.Empty;
+    public string CustomerType { get; set; } = "RAILWAY_EMPLOYEE";
+    public decimal DiscountPercentage { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class UpdateConcessionPolicyDto
+{
+    public string? PolicyName { get; set; }
+    public decimal? DiscountPercentage { get; set; }
+    public bool? IsActive { get; set; }
+}
+
+public class EmployeeStatusUpdateDto
+{
+    public string Status { get; set; } = "ACTIVE"; // ACTIVE, REJECTED, PENDING
+    public string? RejectionReason { get; set; }
+}
+
+public class EmployeeDeviceLockDto
+{
+    public bool? DeviceLocked { get; set; }
+}
+
+public class RailwayEmployeeResponseDto
+{
+    public string EmployeeId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string Department { get; set; } = string.Empty;
+    public string Designation { get; set; } = string.Empty;
+    public string ShiftPolicy { get; set; } = "Standard";
+    public string VerificationStatus { get; set; } = "PENDING";
+    public string? DeviceName { get; set; }
+    public string? DeviceToken { get; set; }
+    public bool DeviceLocked { get; set; }
+    public string? IdCardUrl { get; set; }
+    public string? RejectionReason { get; set; }
+    public DateTime RegisteredAt { get; set; }
+    public DateTime? VerifiedAt { get; set; }
 }
 
 public class EmployeeVerificationRequestDto

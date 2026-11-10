@@ -50,7 +50,27 @@ public static class ServiceCollectionExtensions
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = issuer,
                     ValidAudience = audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                // Remove requirement for "Bearer " prefix - supports tokens with OR without "Bearer "
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                        if (!string.IsNullOrWhiteSpace(authHeader))
+                        {
+                            var token = authHeader.Trim();
+                            while (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                            {
+                                token = token.Substring("Bearer ".Length).Trim();
+                            }
+                            context.Token = token;
+                        }
+                        return Task.CompletedTask;
+                    }
                 };
             });
 
@@ -65,12 +85,11 @@ public static class ServiceCollectionExtensions
             });
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
-                Description = "JWT Authorization header using the Bearer scheme. Paste your JWT token directly here (Bearer prefix will be added automatically).",
+                Description = "JWT Authorization header. Paste your JWT token directly here (works with or without 'Bearer ' prefix).",
                 Name = "Authorization",
                 In = ParameterLocation.Header,
-                Type = SecuritySchemeType.Http,
-                Scheme = "bearer",
-                BearerFormat = "JWT"
+                Type = SecuritySchemeType.ApiKey,
+                Scheme = "Bearer"
             });
             c.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
