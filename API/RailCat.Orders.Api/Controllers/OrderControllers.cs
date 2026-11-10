@@ -31,9 +31,8 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(OrderResponseDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequestDto dto)
     {
         var created = await _orderService.CreateOrderAsync(dto);
@@ -51,6 +50,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet("by-number/{orderNumber}")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(OrderResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByNumber(string orderNumber)

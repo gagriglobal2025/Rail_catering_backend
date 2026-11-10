@@ -122,16 +122,22 @@ public class EmployeeVerificationRequestDto
     public string EmployeeId { get; set; } = string.Empty;
     public string DeviceToken { get; set; } = string.Empty;
     public string? DeviceName { get; set; }
+    public string? VerificationPin { get; set; }
 }
 
 public class EmployeeVerificationResponseDto
 {
     public bool IsEligible { get; set; }
+    public bool IsVerified => IsEligible;
     public decimal ConcessionPercentage { get; set; }
+    public decimal DiscountPercentage => ConcessionPercentage;
     public string Message { get; set; } = string.Empty;
     public string? EmployeeName { get; set; }
+    public string? FullName => EmployeeName;
     public string? Designation { get; set; }
     public string? Department { get; set; }
+    public string StationId { get; set; } = "SC";
+    public int DailyQuotaRemaining { get; set; } = 2;
 }
 
 public class RegisterEmployeeDto
