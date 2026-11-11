@@ -264,6 +264,7 @@ public class EmployeesController : ControllerBase
     }
 
     [HttpPut("{id}/status")]
+    [HttpPatch("{id}/status")]
     [Authorize(Roles = "ADMIN,STORE_MANAGER")]
     [ProducesResponseType(typeof(RailwayEmployeeResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -272,11 +273,15 @@ public class EmployeesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateStatus(string id, [FromBody] EmployeeStatusUpdateDto dto)
     {
-        if (dto.Status != "ACTIVE" && dto.Status != "REJECTED" && dto.Status != "PENDING")
+        var cleanStatus = dto.Status?.Trim().ToUpperInvariant();
+        if (cleanStatus == "ACCEPTED" || cleanStatus == "APPROVED") cleanStatus = "ACTIVE";
+        
+        if (cleanStatus != "ACTIVE" && cleanStatus != "REJECTED" && cleanStatus != "PENDING")
         {
-            return BadRequest(new { message = "Status must be ACTIVE, REJECTED, or PENDING." });
+            return BadRequest(new { message = "Status must be ACTIVE (or ACCEPTED), REJECTED, or PENDING." });
         }
 
+        dto.Status = cleanStatus;
         var updated = await _concessionService.UpdateEmployeeStatusAsync(id, dto);
         if (updated == null) return NotFound(new { message = $"Railway employee '{id}' not found." });
         return Ok(updated);
