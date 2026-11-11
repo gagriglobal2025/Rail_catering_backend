@@ -333,7 +333,7 @@ Authorization: <jwt-token>
   ```json
   {
     "employeeIdOrEmail": "cashier@railcat.local",
-    "password": "Password123!"
+    "password": "123456"
   }
   ```
 * **cURL**:
@@ -342,7 +342,7 @@ Authorization: <jwt-token>
     -H "Content-Type: application/json" \
     -d '{
       "employeeIdOrEmail": "cashier@railcat.local",
-      "password": "Password123!"
+      "password": "123456"
     }'
   ```
 * **Response (200 OK)**:
