@@ -144,6 +144,12 @@ public class RegisterEmployeeDto
     public string? DeviceName { get; set; }
 }
 
+public class UploadIdCardDto
+{
+    public IFormFile File { get; set; } = null!;
+    public string EmployeeId { get; set; } = string.Empty;
+}
+
 public class StationResponseDto
 {
     public string StationId { get; set; } = string.Empty;

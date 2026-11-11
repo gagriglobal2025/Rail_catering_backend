@@ -1,9 +1,16 @@
 using Serilog;
 using Serilog.Events;
+using Microsoft.AspNetCore.DataProtection;
 using RailCat.Catalog.Api.Extensions;
 using RailCat.Catalog.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Persist Data Protection keys to avoid IIS in-memory/ephemeral repository warnings
+var keysFolder = Path.Combine(builder.Environment.ContentRootPath, "keys");
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keysFolder))
+    .SetApplicationName("RailCat.Catalog.Api");
 
 // Configure Serilog: Console + Rolling Daily Files in logs/ folder
 Log.Logger = new LoggerConfiguration()

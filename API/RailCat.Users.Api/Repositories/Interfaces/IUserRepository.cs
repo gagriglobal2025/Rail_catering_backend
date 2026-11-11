@@ -12,5 +12,9 @@ public interface IUserRepository
     Task DeleteAsync(StaffUser user);
     Task UpdatePasswordAsync(Guid userId, string newPasswordHash);
     Task ClearUserSessionsAsync(Guid userId);
+    Task CreateSessionAsync(StaffSession session);
+    Task<StaffSession?> GetSessionByTokenHashAsync(string tokenHash);
+    Task DeleteSessionAsync(Guid sessionId);
+    Task DeleteSessionByTokenHashAsync(string tokenHash);
     Task SaveChangesAsync();
 }

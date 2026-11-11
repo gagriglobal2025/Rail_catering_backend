@@ -20,6 +20,8 @@ public class LoginResponseDto
 {
     public string Token { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
+    public string? RefreshToken { get; set; }
+    public DateTime? RefreshTokenExpiresAt { get; set; }
     public Guid UserId { get; set; }
     public string EmployeeId { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
@@ -27,6 +29,24 @@ public class LoginResponseDto
     public string? PhoneNumber { get; set; }
     public string Role { get; set; } = string.Empty;
     public string StationId { get; set; } = "SC";
+}
+
+public class RefreshTokenRequestDto
+{
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
+public class RefreshTokenResponseDto
+{
+    public string Token { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+    public string RefreshToken { get; set; } = string.Empty;
+    public DateTime RefreshTokenExpiresAt { get; set; }
+}
+
+public class RevokeTokenRequestDto
+{
+    public string? RefreshToken { get; set; }
 }
 
 public class ChangePasswordRequestDto

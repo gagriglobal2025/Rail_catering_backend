@@ -5,7 +5,9 @@ namespace RailCat.Users.Api.Services.Interfaces;
 
 public interface IAuthService
 {
-    Task<LoginResponseDto> LoginAsync(LoginRequestDto request);
+    Task<LoginResponseDto> LoginAsync(LoginRequestDto request, string? ipAddress = null, string? userAgent = null);
+    Task<RefreshTokenResponseDto> RefreshTokenAsync(string refreshToken, string? ipAddress = null, string? userAgent = null);
+    Task<bool> RevokeTokenAsync(string refreshToken);
     Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordRequestDto request);
     Task<bool> ResetPasswordByAdminAsync(Guid userId, string newPassword);
     Task<UserProfileResponseDto> GetProfileAsync(Guid userId);
