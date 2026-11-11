@@ -73,11 +73,7 @@ public class RailwayConcessionEmployeeConfiguration : IEntityTypeConfiguration<R
         builder.HasKey(e => e.EmployeeId);
         builder.Property(e => e.EmployeeId).HasColumnName("employee_id").HasMaxLength(30);
         builder.Property(e => e.FullName).HasColumnName("full_name").HasMaxLength(100).IsRequired();
-        builder.Property(e => e.Email).HasColumnName("email").HasMaxLength(120);
         builder.Property(e => e.Phone).HasColumnName("phone").HasMaxLength(20);
-        builder.Property(e => e.Department).HasColumnName("department").HasMaxLength(100).IsRequired();
-        builder.Property(e => e.Designation).HasColumnName("designation").HasMaxLength(100).IsRequired();
-        builder.Property(e => e.ShiftPolicy).HasColumnName("shift_policy").HasMaxLength(50);
         builder.Property(e => e.VerificationStatus).HasColumnName("verification_status").HasMaxLength(20).IsRequired();
         builder.Property(e => e.DeviceName).HasColumnName("device_name").HasMaxLength(100);
         builder.Property(e => e.DeviceToken).HasColumnName("device_token").HasMaxLength(100);
@@ -86,6 +82,47 @@ public class RailwayConcessionEmployeeConfiguration : IEntityTypeConfiguration<R
         builder.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
         builder.Property(e => e.RegisteredAt).HasColumnName("registered_at");
         builder.Property(e => e.VerifiedAt).HasColumnName("verified_at");
+    }
+}
+
+public class StationConfiguration : IEntityTypeConfiguration<Station>
+{
+    public void Configure(EntityTypeBuilder<Station> builder)
+    {
+        builder.ToTable("stations");
+        builder.HasKey(s => s.StationId);
+        builder.Property(s => s.StationId).HasColumnName("station_id").HasMaxLength(20);
+        builder.Property(s => s.StationName).HasColumnName("station_name").HasMaxLength(150).IsRequired();
+        builder.Property(s => s.StationCode).HasColumnName("station_code").HasMaxLength(20).IsRequired();
+        builder.Property(s => s.Platform).HasColumnName("platform").HasMaxLength(50);
+        builder.Property(s => s.Address).HasColumnName("address").HasMaxLength(255);
+        builder.Property(s => s.GeofenceRadiusM).HasColumnName("geofence_radius_m").HasDefaultValue(250);
+        builder.Property(s => s.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+        builder.Property(s => s.CreatedAt).HasColumnName("created_at");
+        builder.Property(s => s.UpdatedAt).HasColumnName("updated_at");
+    }
+}
+
+public class PromotionalAdConfiguration : IEntityTypeConfiguration<PromotionalAd>
+{
+    public void Configure(EntityTypeBuilder<PromotionalAd> builder)
+    {
+        builder.ToTable("promotional_ads");
+        builder.HasKey(a => a.AdId);
+        builder.Property(a => a.AdId).HasColumnName("ad_id").HasMaxLength(50);
+        builder.Property(a => a.Tag).HasColumnName("tag").HasMaxLength(50).IsRequired();
+        builder.Property(a => a.Sponsor).HasColumnName("sponsor").HasMaxLength(100).IsRequired();
+        builder.Property(a => a.Title).HasColumnName("title").HasMaxLength(150).IsRequired();
+        builder.Property(a => a.Subtitle).HasColumnName("subtitle").HasMaxLength(255);
+        builder.Property(a => a.CtaText).HasColumnName("cta_text").HasMaxLength(50).IsRequired();
+        builder.Property(a => a.Href).HasColumnName("href").HasMaxLength(500);
+        builder.Property(a => a.BadgeColor).HasColumnName("badge_color").HasMaxLength(20).IsRequired();
+        builder.Property(a => a.BgGradient).HasColumnName("bg_gradient").HasMaxLength(255);
+        builder.Property(a => a.ImageUrl).HasColumnName("image_url");
+        builder.Property(a => a.SortOrder).HasColumnName("sort_order").HasDefaultValue(0);
+        builder.Property(a => a.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+        builder.Property(a => a.CreatedAt).HasColumnName("created_at");
+        builder.Property(a => a.UpdatedAt).HasColumnName("updated_at");
     }
 }
 

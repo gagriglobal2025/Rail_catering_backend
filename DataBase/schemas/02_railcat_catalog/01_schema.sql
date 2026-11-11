@@ -48,11 +48,7 @@ CREATE TABLE IF NOT EXISTS concession_policies (
 CREATE TABLE IF NOT EXISTS railway_concession_employees (
     employee_id VARCHAR(30) PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
-    email VARCHAR(120),
     phone VARCHAR(20),
-    department VARCHAR(100) NOT NULL,
-    designation VARCHAR(100) NOT NULL,
-    shift_policy VARCHAR(50) DEFAULT 'Standard',
     verification_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (verification_status IN ('ACTIVE', 'PENDING', 'REJECTED')),
     device_name VARCHAR(100),
     device_token VARCHAR(100),
@@ -63,8 +59,41 @@ CREATE TABLE IF NOT EXISTS railway_concession_employees (
     verified_at TIMESTAMPTZ
 );
 
+-- Railway Stations / Pickup Locations served by RailCat catering counters
+CREATE TABLE IF NOT EXISTS stations (
+    station_id VARCHAR(20) PRIMARY KEY,
+    station_name VARCHAR(150) NOT NULL,
+    station_code VARCHAR(20) NOT NULL,
+    platform VARCHAR(50),
+    address VARCHAR(255),
+    geofence_radius_m INT NOT NULL DEFAULT 250,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Promotional / Partner Ad Banners shown on the Customer Mobile Web home screen
+CREATE TABLE IF NOT EXISTS promotional_ads (
+    ad_id VARCHAR(50) PRIMARY KEY,
+    tag VARCHAR(50) NOT NULL DEFAULT 'SPONSORED',
+    sponsor VARCHAR(100) NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    subtitle VARCHAR(255),
+    cta_text VARCHAR(50) NOT NULL DEFAULT 'Learn More',
+    href VARCHAR(500),
+    badge_color VARCHAR(20) NOT NULL DEFAULT '#ea580c',
+    bg_gradient VARCHAR(255),
+    image_url TEXT,
+    sort_order INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_menu_items_category ON menu_items(category_id);
 CREATE INDEX IF NOT EXISTS idx_menu_items_available ON menu_items(is_available, is_sold_out);
 CREATE INDEX IF NOT EXISTS idx_concession_emp_status ON railway_concession_employees(verification_status);
 CREATE INDEX IF NOT EXISTS idx_concession_emp_device ON railway_concession_employees(device_token);
+CREATE INDEX IF NOT EXISTS idx_stations_active ON stations(is_active);
+CREATE INDEX IF NOT EXISTS idx_ads_active_sort ON promotional_ads(is_active, sort_order);
 

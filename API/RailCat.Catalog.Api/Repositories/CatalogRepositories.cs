@@ -115,8 +115,7 @@ public class EmployeeRepository : IEmployeeRepository
             query = query.Where(e =>
                 e.FullName.ToLower().Contains(q) ||
                 e.EmployeeId.ToLower().Contains(q) ||
-                (e.DeviceName != null && e.DeviceName.ToLower().Contains(q)) ||
-                (e.Department != null && e.Department.ToLower().Contains(q))
+                (e.DeviceName != null && e.DeviceName.ToLower().Contains(q))
             );
         }
 
@@ -165,6 +164,120 @@ public class EmployeeRepository : IEmployeeRepository
     {
         _context.ConcessionPolicies.Update(policy);
         await _context.SaveChangesAsync();
+    }
+}
+
+public interface IStationRepository
+{
+    Task<IEnumerable<Station>> GetAllAsync(bool? isActive = null);
+    Task<Station?> GetByIdAsync(string stationId);
+    Task<Station> AddAsync(Station station);
+    Task UpdateAsync(Station station);
+    Task<bool> DeleteAsync(string stationId);
+}
+
+public class StationRepository : IStationRepository
+{
+    private readonly CatalogDbContext _context;
+
+    public StationRepository(CatalogDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<IEnumerable<Station>> GetAllAsync(bool? isActive = null)
+    {
+        var query = _context.Stations.AsQueryable();
+        if (isActive.HasValue)
+        {
+            query = query.Where(s => s.IsActive == isActive.Value);
+        }
+        return await query.OrderBy(s => s.StationName).ToListAsync();
+    }
+
+    public async Task<Station?> GetByIdAsync(string stationId)
+    {
+        return await _context.Stations.FirstOrDefaultAsync(s => s.StationId.ToLower() == stationId.ToLower());
+    }
+
+    public async Task<Station> AddAsync(Station station)
+    {
+        await _context.Stations.AddAsync(station);
+        await _context.SaveChangesAsync();
+        return station;
+    }
+
+    public async Task UpdateAsync(Station station)
+    {
+        station.UpdatedAt = DateTime.UtcNow;
+        _context.Stations.Update(station);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<bool> DeleteAsync(string stationId)
+    {
+        var station = await GetByIdAsync(stationId);
+        if (station == null) return false;
+        _context.Stations.Remove(station);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+}
+
+public interface IAdRepository
+{
+    Task<IEnumerable<PromotionalAd>> GetAllAsync(bool? isActive = null);
+    Task<PromotionalAd?> GetByIdAsync(string adId);
+    Task<PromotionalAd> AddAsync(PromotionalAd ad);
+    Task UpdateAsync(PromotionalAd ad);
+    Task<bool> DeleteAsync(string adId);
+}
+
+public class AdRepository : IAdRepository
+{
+    private readonly CatalogDbContext _context;
+
+    public AdRepository(CatalogDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<IEnumerable<PromotionalAd>> GetAllAsync(bool? isActive = null)
+    {
+        var query = _context.PromotionalAds.AsQueryable();
+        if (isActive.HasValue)
+        {
+            query = query.Where(a => a.IsActive == isActive.Value);
+        }
+        return await query.OrderBy(a => a.SortOrder).ToListAsync();
+    }
+
+    public async Task<PromotionalAd?> GetByIdAsync(string adId)
+    {
+        return await _context.PromotionalAds.FirstOrDefaultAsync(a => a.AdId.ToLower() == adId.ToLower());
+    }
+
+    public async Task<PromotionalAd> AddAsync(PromotionalAd ad)
+    {
+        await _context.PromotionalAds.AddAsync(ad);
+        await _context.SaveChangesAsync();
+        return ad;
+    }
+
+    public async Task UpdateAsync(PromotionalAd ad)
+    {
+        ad.UpdatedAt = DateTime.UtcNow;
+        _context.PromotionalAds.Update(ad);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<bool> DeleteAsync(string adId)
+    {
+        var ad = await GetByIdAsync(adId);
+        if (ad == null) return false;
+        _context.PromotionalAds.Remove(ad);
+        await _context.SaveChangesAsync();
+        return true;
     }
 }
 

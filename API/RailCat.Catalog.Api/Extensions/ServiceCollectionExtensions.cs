@@ -24,8 +24,12 @@ public static class ServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<IMenuRepository, MenuRepository>();
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<IStationRepository, StationRepository>();
+        services.AddScoped<IAdRepository, AdRepository>();
         services.AddScoped<IMenuService, MenuService>();
         services.AddScoped<IConcessionService, ConcessionService>();
+        services.AddScoped<IStationService, StationService>();
+        services.AddScoped<IAdService, AdService>();
 
         services.AddFluentValidationAutoValidation();
         services.AddValidatorsFromAssemblyContaining<CreateMenuItemValidator>();

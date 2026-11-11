@@ -108,6 +108,51 @@ public class PaymentsController : ControllerBase
 }
 
 [ApiController]
+[Route("api/payments/razorpay")]
+[AllowAnonymous]
+public class RazorpayController : ControllerBase
+{
+    private readonly IRazorpayService _razorpayService;
+
+    public RazorpayController(IRazorpayService razorpayService)
+    {
+        _razorpayService = razorpayService;
+    }
+
+    [HttpPost("create-order")]
+    [ProducesResponseType(typeof(RazorpayOrderResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateOrder([FromBody] CreateRazorpayOrderDto dto)
+    {
+        try
+        {
+            var order = await _razorpayService.CreateOrderAsync(dto);
+            return Ok(order);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("verify")]
+    [ProducesResponseType(typeof(PaymentResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Verify([FromBody] VerifyRazorpayPaymentDto dto)
+    {
+        try
+        {
+            var payment = await _razorpayService.VerifyAndRecordPaymentAsync(dto);
+            return Ok(payment);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+}
+
+[ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "ADMIN,STORE_MANAGER")]
 public class ReportsController : ControllerBase

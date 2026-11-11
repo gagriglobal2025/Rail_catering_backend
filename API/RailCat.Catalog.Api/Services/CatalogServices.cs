@@ -24,6 +24,7 @@ public interface IConcessionService
     Task<IEnumerable<RailwayEmployeeResponseDto>> GetAllEmployeesAsync(string? status = null, string? search = null);
     Task<RailwayEmployeeResponseDto?> GetEmployeeByIdAsync(string employeeId);
     Task<RailwayEmployeeResponseDto> RegisterEmployeeAsync(RegisterEmployeeDto dto);
+    Task<string> UploadIdCardImageAsync(IFormFile file, string employeeId);
     Task<RailwayEmployeeResponseDto?> UpdateEmployeeStatusAsync(string employeeId, EmployeeStatusUpdateDto dto);
     Task<RailwayEmployeeResponseDto?> ToggleDeviceLockAsync(string employeeId, bool? deviceLocked = null);
     Task<bool> LockDeviceAsync(string employeeId, string deviceToken, string deviceName);
@@ -274,10 +275,76 @@ public class MenuService : IMenuService
 public class ConcessionService : IConcessionService
 {
     private readonly IEmployeeRepository _repo;
+    private readonly IWebHostEnvironment _env;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public ConcessionService(IEmployeeRepository repo)
+    public ConcessionService(IEmployeeRepository repo, IWebHostEnvironment env, IHttpContextAccessor httpContextAccessor)
     {
         _repo = repo;
+        _env = env;
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    public async Task<string> UploadIdCardImageAsync(IFormFile file, string employeeId)
+    {
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        if (!allowed.Contains(ext))
+        {
+            throw new ArgumentException($"Invalid image extension '{ext}'. Allowed extensions: {string.Join(", ", allowed)}");
+        }
+
+        if (file.Length > 10 * 1024 * 1024)
+        {
+            throw new ArgumentException("Image file size exceeds maximum limit of 10 MB.");
+        }
+
+        var webRoot = _env.WebRootPath;
+        if (string.IsNullOrEmpty(webRoot))
+        {
+            webRoot = Path.Combine(_env.ContentRootPath, "wwwroot");
+        }
+
+        var uploadsFolder = Path.Combine(webRoot, "uploads", "id-cards");
+        if (!Directory.Exists(uploadsFolder))
+        {
+            Directory.CreateDirectory(uploadsFolder);
+        }
+
+        var sanitizedId = string.Join("_", employeeId.Split(Path.GetInvalidFileNameChars()));
+        var uniqueFileName = $"{sanitizedId}_{Guid.NewGuid().ToString("N")[..8]}{ext}";
+        var fullPath = Path.Combine(uploadsFolder, uniqueFileName);
+
+        using (var stream = new FileStream(fullPath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        return ResolveImageUrl($"/uploads/id-cards/{uniqueFileName}")!;
+    }
+
+    private string? ResolveImageUrl(string? rawUrl)
+    {
+        if (string.IsNullOrWhiteSpace(rawUrl)) return null;
+
+        if (rawUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            rawUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return rawUrl;
+        }
+
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext != null)
+        {
+            var req = httpContext.Request;
+            var scheme = req.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? req.Scheme;
+            var host = req.Headers["X-Forwarded-Host"].FirstOrDefault() ?? req.Host.Value;
+            var pathBase = req.PathBase.Value?.TrimEnd('/') ?? "";
+            var cleanPath = rawUrl.StartsWith('/') ? rawUrl : "/" + rawUrl;
+            return $"{scheme}://{host}{pathBase}{cleanPath}";
+        }
+
+        return rawUrl;
     }
 
     public async Task<EmployeeVerificationResponseDto> VerifyEmployeeAsync(EmployeeVerificationRequestDto dto)
@@ -331,9 +398,7 @@ public class ConcessionService : IConcessionService
             IsEligible = true,
             ConcessionPercentage = percent,
             Message = "Railway Employee Concession 20% Verified.",
-            EmployeeName = emp.FullName,
-            Designation = emp.Designation,
-            Department = emp.Department
+            EmployeeName = emp.FullName
         };
     }
 
@@ -351,15 +416,35 @@ public class ConcessionService : IConcessionService
 
     public async Task<RailwayEmployeeResponseDto> RegisterEmployeeAsync(RegisterEmployeeDto dto)
     {
+        var existing = await _repo.GetByEmployeeIdAsync(dto.EmployeeId);
+
+        // Re-submission (e.g. "Edit application / Re-upload ID") refreshes the existing
+        // application instead of failing on the employee_id primary key.
+        if (existing != null)
+        {
+            existing.FullName = dto.FullName;
+            existing.Phone = dto.Phone;
+            if (!string.IsNullOrWhiteSpace(dto.IdCardUrl)) existing.IdCardUrl = dto.IdCardUrl;
+            if (!string.IsNullOrWhiteSpace(dto.DeviceToken)) existing.DeviceToken = dto.DeviceToken;
+            if (!string.IsNullOrWhiteSpace(dto.DeviceName)) existing.DeviceName = dto.DeviceName;
+
+            if (existing.VerificationStatus != "ACTIVE")
+            {
+                existing.VerificationStatus = "PENDING";
+                existing.RejectionReason = null;
+            }
+
+            await _repo.UpdateAsync(existing);
+            return MapEmployeeToDto(existing);
+        }
+
         var emp = new RailwayConcessionEmployee
         {
-            EmployeeId = dto.EmployeeId,
+            EmployeeId = dto.EmployeeId.Trim(),
             FullName = dto.FullName,
-            Email = dto.Email,
             Phone = dto.Phone,
-            Department = dto.Department,
-            Designation = dto.Designation,
-            ShiftPolicy = dto.ShiftPolicy ?? "Standard",
+            DeviceToken = dto.DeviceToken,
+            DeviceName = dto.DeviceName,
             IdCardUrl = dto.IdCardUrl,
             VerificationStatus = "PENDING",
             RegisteredAt = DateTime.UtcNow
@@ -380,7 +465,9 @@ public class ConcessionService : IConcessionService
         if (status == "ACTIVE")
         {
             emp.VerifiedAt = DateTime.UtcNow;
-            emp.DeviceLocked = true; // Auto-lock device on verification
+            // Only lock if a device was actually captured at registration/re-submission;
+            // otherwise leave it open so the first verify-concession call can bind it.
+            emp.DeviceLocked = !string.IsNullOrEmpty(emp.DeviceToken);
             emp.RejectionReason = null;
         }
         else if (status == "REJECTED")
@@ -477,23 +564,290 @@ public class ConcessionService : IConcessionService
         };
     }
 
-    private static RailwayEmployeeResponseDto MapEmployeeToDto(RailwayConcessionEmployee e) => new()
+    private RailwayEmployeeResponseDto MapEmployeeToDto(RailwayConcessionEmployee e) => new()
     {
         EmployeeId = e.EmployeeId,
         FullName = e.FullName,
-        Email = e.Email,
         Phone = e.Phone,
-        Department = e.Department,
-        Designation = e.Designation,
-        ShiftPolicy = e.ShiftPolicy,
         VerificationStatus = e.VerificationStatus,
         DeviceName = e.DeviceName,
         DeviceToken = e.DeviceToken,
         DeviceLocked = e.DeviceLocked,
-        IdCardUrl = e.IdCardUrl,
+        IdCardUrl = ResolveImageUrl(e.IdCardUrl),
         RejectionReason = e.RejectionReason,
         RegisteredAt = e.RegisteredAt,
         VerifiedAt = e.VerifiedAt
+    };
+}
+
+public interface IStationService
+{
+    Task<IEnumerable<StationResponseDto>> GetAllAsync(bool? isActive = null);
+    Task<StationResponseDto?> GetByIdAsync(string stationId);
+    Task<StationResponseDto> CreateAsync(CreateStationDto dto);
+    Task<StationResponseDto?> UpdateAsync(string stationId, UpdateStationDto dto);
+    Task<bool> DeleteAsync(string stationId);
+}
+
+public class StationService : IStationService
+{
+    private readonly IStationRepository _repo;
+
+    public StationService(IStationRepository repo)
+    {
+        _repo = repo;
+    }
+
+    public async Task<IEnumerable<StationResponseDto>> GetAllAsync(bool? isActive = null)
+    {
+        var stations = await _repo.GetAllAsync(isActive);
+        return stations.Select(MapToDto);
+    }
+
+    public async Task<StationResponseDto?> GetByIdAsync(string stationId)
+    {
+        var station = await _repo.GetByIdAsync(stationId);
+        return station == null ? null : MapToDto(station);
+    }
+
+    public async Task<StationResponseDto> CreateAsync(CreateStationDto dto)
+    {
+        var station = new Station
+        {
+            StationId = dto.StationId.Trim().ToUpperInvariant(),
+            StationName = dto.StationName,
+            StationCode = dto.StationCode.Trim().ToUpperInvariant(),
+            Platform = dto.Platform,
+            Address = dto.Address,
+            GeofenceRadiusM = dto.GeofenceRadiusM ?? 250,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var created = await _repo.AddAsync(station);
+        return MapToDto(created);
+    }
+
+    public async Task<StationResponseDto?> UpdateAsync(string stationId, UpdateStationDto dto)
+    {
+        var station = await _repo.GetByIdAsync(stationId);
+        if (station == null) return null;
+
+        if (!string.IsNullOrWhiteSpace(dto.StationName)) station.StationName = dto.StationName;
+        if (!string.IsNullOrWhiteSpace(dto.StationCode)) station.StationCode = dto.StationCode.Trim().ToUpperInvariant();
+        if (dto.Platform != null) station.Platform = dto.Platform;
+        if (dto.Address != null) station.Address = dto.Address;
+        if (dto.GeofenceRadiusM.HasValue) station.GeofenceRadiusM = dto.GeofenceRadiusM.Value;
+        if (dto.IsActive.HasValue) station.IsActive = dto.IsActive.Value;
+
+        await _repo.UpdateAsync(station);
+        return MapToDto(station);
+    }
+
+    public async Task<bool> DeleteAsync(string stationId)
+    {
+        return await _repo.DeleteAsync(stationId);
+    }
+
+    private static StationResponseDto MapToDto(Station s) => new()
+    {
+        StationId = s.StationId,
+        StationName = s.StationName,
+        StationCode = s.StationCode,
+        Platform = s.Platform,
+        Address = s.Address,
+        GeofenceRadiusM = s.GeofenceRadiusM,
+        IsActive = s.IsActive,
+        CreatedAt = s.CreatedAt
+    };
+}
+
+public interface IAdService
+{
+    Task<IEnumerable<AdResponseDto>> GetAllAsync(bool? isActive = null);
+    Task<AdResponseDto?> GetByIdAsync(string adId);
+    Task<AdResponseDto> CreateAsync(CreateAdDto dto);
+    Task<AdResponseDto?> UpdateAsync(string adId, UpdateAdDto dto);
+    Task<bool> DeleteAsync(string adId);
+}
+
+public class AdService : IAdService
+{
+    private readonly IAdRepository _repo;
+    private readonly IWebHostEnvironment _env;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    public AdService(IAdRepository repo, IWebHostEnvironment env, IHttpContextAccessor httpContextAccessor)
+    {
+        _repo = repo;
+        _env = env;
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    private async Task<string?> ProcessImageAsync(IFormFile? file, string? providedUrl, string adId)
+    {
+        if (file != null && file.Length > 0)
+        {
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+            if (!allowed.Contains(ext))
+            {
+                throw new ArgumentException($"Invalid image extension '{ext}'. Allowed extensions: {string.Join(", ", allowed)}");
+            }
+
+            if (file.Length > 10 * 1024 * 1024)
+            {
+                throw new ArgumentException("Image file size exceeds maximum limit of 10 MB.");
+            }
+
+            var webRoot = _env.WebRootPath;
+            if (string.IsNullOrEmpty(webRoot))
+            {
+                webRoot = Path.Combine(_env.ContentRootPath, "wwwroot");
+            }
+
+            var uploadsFolder = Path.Combine(webRoot, "uploads", "ads");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            var sanitizedId = string.Join("_", adId.Split(Path.GetInvalidFileNameChars()));
+            var uniqueFileName = $"{sanitizedId}_{Guid.NewGuid().ToString("N")[..8]}{ext}";
+            var fullPath = Path.Combine(uploadsFolder, uniqueFileName);
+
+            using (var stream = new FileStream(fullPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return $"/uploads/ads/{uniqueFileName}";
+        }
+
+        return string.IsNullOrWhiteSpace(providedUrl) ? null : providedUrl.Trim();
+    }
+
+    private string? ResolveImageUrl(string? rawUrl)
+    {
+        if (string.IsNullOrWhiteSpace(rawUrl)) return null;
+
+        if (rawUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            rawUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return rawUrl;
+        }
+
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext != null)
+        {
+            var req = httpContext.Request;
+            var scheme = req.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? req.Scheme;
+            var host = req.Headers["X-Forwarded-Host"].FirstOrDefault() ?? req.Host.Value;
+            var pathBase = req.PathBase.Value?.TrimEnd('/') ?? "";
+            var cleanPath = rawUrl.StartsWith('/') ? rawUrl : "/" + rawUrl;
+            return $"{scheme}://{host}{pathBase}{cleanPath}";
+        }
+
+        return rawUrl;
+    }
+
+    private static string GenerateAdId(string sponsor)
+    {
+        var baseSlug = Regex.Replace(sponsor.Trim().ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+        if (string.IsNullOrWhiteSpace(baseSlug)) baseSlug = "ad";
+        if (baseSlug.Length > 30) baseSlug = baseSlug[..30].Trim('-');
+        return $"{baseSlug}-{Guid.NewGuid().ToString("N")[..6]}";
+    }
+
+    public async Task<IEnumerable<AdResponseDto>> GetAllAsync(bool? isActive = null)
+    {
+        var ads = await _repo.GetAllAsync(isActive);
+        return ads.Select(MapToDto);
+    }
+
+    public async Task<AdResponseDto?> GetByIdAsync(string adId)
+    {
+        var ad = await _repo.GetByIdAsync(adId);
+        return ad == null ? null : MapToDto(ad);
+    }
+
+    public async Task<AdResponseDto> CreateAsync(CreateAdDto dto)
+    {
+        var adId = string.IsNullOrWhiteSpace(dto.AdId) ? GenerateAdId(dto.Sponsor) : dto.AdId.Trim();
+        var imageUrl = await ProcessImageAsync(dto.ImageFile, dto.ImageUrl, adId);
+
+        var ad = new PromotionalAd
+        {
+            AdId = adId,
+            Tag = dto.Tag,
+            Sponsor = dto.Sponsor,
+            Title = dto.Title,
+            Subtitle = dto.Subtitle,
+            CtaText = dto.CtaText,
+            Href = dto.Href,
+            BadgeColor = dto.BadgeColor,
+            BgGradient = dto.BgGradient,
+            ImageUrl = imageUrl,
+            SortOrder = dto.SortOrder,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var created = await _repo.AddAsync(ad);
+        return MapToDto(created);
+    }
+
+    public async Task<AdResponseDto?> UpdateAsync(string adId, UpdateAdDto dto)
+    {
+        var ad = await _repo.GetByIdAsync(adId);
+        if (ad == null) return null;
+
+        if (!string.IsNullOrWhiteSpace(dto.Tag)) ad.Tag = dto.Tag;
+        if (!string.IsNullOrWhiteSpace(dto.Sponsor)) ad.Sponsor = dto.Sponsor;
+        if (!string.IsNullOrWhiteSpace(dto.Title)) ad.Title = dto.Title;
+        if (dto.Subtitle != null) ad.Subtitle = dto.Subtitle;
+        if (!string.IsNullOrWhiteSpace(dto.CtaText)) ad.CtaText = dto.CtaText;
+        if (dto.Href != null) ad.Href = dto.Href;
+        if (!string.IsNullOrWhiteSpace(dto.BadgeColor)) ad.BadgeColor = dto.BadgeColor;
+        if (dto.BgGradient != null) ad.BgGradient = dto.BgGradient;
+        if (dto.SortOrder.HasValue) ad.SortOrder = dto.SortOrder.Value;
+        if (dto.IsActive.HasValue) ad.IsActive = dto.IsActive.Value;
+
+        if (dto.ImageFile != null && dto.ImageFile.Length > 0)
+        {
+            ad.ImageUrl = await ProcessImageAsync(dto.ImageFile, null, adId);
+        }
+        else if (dto.ImageUrl != null)
+        {
+            ad.ImageUrl = string.IsNullOrWhiteSpace(dto.ImageUrl) ? null : dto.ImageUrl.Trim();
+        }
+
+        await _repo.UpdateAsync(ad);
+        return MapToDto(ad);
+    }
+
+    public async Task<bool> DeleteAsync(string adId)
+    {
+        return await _repo.DeleteAsync(adId);
+    }
+
+    private AdResponseDto MapToDto(PromotionalAd a) => new()
+    {
+        AdId = a.AdId,
+        Tag = a.Tag,
+        Sponsor = a.Sponsor,
+        Title = a.Title,
+        Subtitle = a.Subtitle,
+        CtaText = a.CtaText,
+        Href = a.Href,
+        BadgeColor = a.BadgeColor,
+        BgGradient = a.BgGradient,
+        ImageUrl = ResolveImageUrl(a.ImageUrl),
+        SortOrder = a.SortOrder,
+        IsActive = a.IsActive,
+        CreatedAt = a.CreatedAt
     };
 }
 
