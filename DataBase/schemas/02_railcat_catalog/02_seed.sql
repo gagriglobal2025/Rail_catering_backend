@@ -35,12 +35,29 @@ VALUES
 ON CONFLICT (policy_id) DO NOTHING;
 
 -- Pre-registered Railway Employees with Device Binding (for differential pricing verification)
-INSERT INTO railway_concession_employees (employee_id, full_name, email, phone, department, designation, shift_policy, verification_status, device_name, device_token, device_locked, id_card_url)
+INSERT INTO railway_concession_employees (employee_id, full_name, phone, verification_status, device_name, device_token, device_locked, id_card_url)
 VALUES
-    ('G084', 'Challa Narayana Rao', 'challa.n@railcat.local', '+919440123456', 'Running Staff', 'Senior Loco Pilot (Mail/Express)', 'Night Shift Roster', 'ACTIVE', 'Redmi 24094RAD4I', 'dvt_redmi_24094rad4i_88f9c2', true, 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400'),
-    ('SCR-1042', 'Venkata Ramanamurthy', 'v.ramana@railcat.local', '+919848011223', 'Commercial', 'Senior Ticket Examiner (TTE)', 'General Shift', 'ACTIVE', 'Samsung Galaxy M34', 'dvt_samsung_m34_a1b2c3', true, 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400'),
-    ('SCR-2091', 'P. Satyanarayana', 'p.satya@railcat.local', '+919848099887', 'Operating', 'Station Master Grade II', 'Rotational', 'ACTIVE', 'OnePlus Nord CE 3', 'dvt_oneplus_nord_99d4e1', true, 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=400'),
-    ('SCR-3388', 'B. Koteswara Rao', 'kotesh.b@railcat.local', '+919701234890', 'Mechanical', 'Senior Section Engineer', 'General Shift', 'PENDING', 'Vivo T2 Pro', 'dvt_vivo_t2p_77a4b1', false, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'),
-    ('SCR-4512', 'M. Srinivasa Reddy', 'ms.reddy@railcat.local', '+919618055443', 'Electrical', 'Loco Pilot (Goods)', 'Running Duty', 'PENDING', NULL, NULL, false, 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400')
+    ('G084', 'Challa Narayana Rao', '+919440123456', 'ACTIVE', 'Redmi 24094RAD4I', 'dvt_redmi_24094rad4i_88f9c2', true, 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400'),
+    ('SCR-1042', 'Venkata Ramanamurthy', '+919848011223', 'ACTIVE', 'Samsung Galaxy M34', 'dvt_samsung_m34_a1b2c3', true, 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400'),
+    ('SCR-2091', 'P. Satyanarayana', '+919848099887', 'ACTIVE', 'OnePlus Nord CE 3', 'dvt_oneplus_nord_99d4e1', true, 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=400'),
+    ('SCR-3388', 'B. Koteswara Rao', '+919701234890', 'PENDING', 'Vivo T2 Pro', 'dvt_vivo_t2p_77a4b1', false, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'),
+    ('SCR-4512', 'M. Srinivasa Reddy', '+919618055443', 'PENDING', NULL, NULL, false, 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400')
 ON CONFLICT (employee_id) DO NOTHING;
+
+-- Railway Stations served by RailCat catering counters
+INSERT INTO stations (station_id, station_name, station_code, platform, geofence_radius_m, is_active)
+VALUES
+    ('SC', 'Secunderabad Junction', 'SC', 'Platform 6', 250, true),
+    ('HYB', 'Hyderabad Deccan', 'HYB', NULL, 250, true),
+    ('NED', 'Nanded', 'NED', NULL, 250, true)
+ON CONFLICT (station_id) DO NOTHING;
+
+-- Partner Promotional Ads shown on the Customer Mobile Web home screen
+INSERT INTO promotional_ads (ad_id, tag, sponsor, title, subtitle, cta_text, href, badge_color, bg_gradient, image_url, sort_order, is_active)
+VALUES
+    ('makemytrip', 'SPONSORED', 'MakeMyTrip', '₹250 OFF on Train & Flights', 'Zero cancellation fee + Guaranteed refund protection for train passengers', 'Claim Offer', 'https://www.makemytrip.com', '#ea580c', 'linear-gradient(135deg, #0b1e36 0%, #1d4ed8 60%, #1e40af 100%)', 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=400&q=76', 1, true),
+    ('phonepe', 'AD · CASHBACK', 'PhonePe UPI', 'Flat ₹100 Cashback on Food', 'Scan IRCTC QR at Counter 3 and pay via PhonePe for assured rewards', 'Open PhonePe', 'https://www.phonepe.com', '#7c3aed', 'linear-gradient(135deg, #3b0764 0%, #6d28d9 60%, #4c1d95 100%)', 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=400&q=76', 2, true),
+    ('uber', 'PARTNER', 'Uber Auto & Cabs', 'Station Pickup at Gate 1', 'Skip the taxi queue at Visakhapatnam Jn. Code VSKP30 for 30% off', 'Book Ride', 'https://www.uber.com', '#059669', 'linear-gradient(135deg, #09090b 0%, #27272a 60%, #18181b 100%)', 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=400&q=76', 3, true),
+    ('sbi-card', 'OFFICIAL', 'IRCTC SBI RuPay Card', 'Save 10% on Railway Catering', 'Exclusive 10% value back + 4 complimentary railway executive lounge visits', 'Apply Now', 'https://www.sbicard.com', '#0284c7', 'linear-gradient(135deg, #082f49 0%, #0284c7 60%, #0369a1 100%)', 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=400&q=76', 4, true)
+ON CONFLICT (ad_id) DO NOTHING;
 

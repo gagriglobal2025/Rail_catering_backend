@@ -46,6 +46,30 @@ public class PaymentResponseDto
     public DateTime CreatedAt { get; set; }
 }
 
+public class CreateRazorpayOrderDto
+{
+    public decimal Amount { get; set; }
+    public string? Receipt { get; set; }
+}
+
+public class RazorpayOrderResponseDto
+{
+    public string RazorpayOrderId { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "INR";
+    public string KeyId { get; set; } = string.Empty;
+}
+
+public class VerifyRazorpayPaymentDto
+{
+    public string RazorpayOrderId { get; set; } = string.Empty;
+    public string RazorpayPaymentId { get; set; } = string.Empty;
+    public string RazorpaySignature { get; set; } = string.Empty;
+    public Guid OrderId { get; set; }
+    public Guid? ShiftId { get; set; }
+    public decimal Amount { get; set; }
+}
+
 public class DailySalesSummaryDto
 {
     public DateOnly SummaryDate { get; set; }

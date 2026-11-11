@@ -11,6 +11,8 @@ public class CatalogDbContext : DbContext
     public DbSet<MenuItem> MenuItems => Set<MenuItem>();
     public DbSet<ConcessionPolicy> ConcessionPolicies => Set<ConcessionPolicy>();
     public DbSet<RailwayConcessionEmployee> RailwayConcessionEmployees => Set<RailwayConcessionEmployee>();
+    public DbSet<Station> Stations => Set<Station>();
+    public DbSet<PromotionalAd> PromotionalAds => Set<PromotionalAd>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

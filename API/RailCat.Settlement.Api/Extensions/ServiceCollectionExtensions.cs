@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IShiftService, ShiftService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IReportService, ReportService>();
+        services.AddHttpClient<IRazorpayService, RazorpayService>();
 
         services.AddFluentValidationAutoValidation();
         services.AddValidatorsFromAssemblyContaining<OpenShiftValidator>();

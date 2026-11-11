@@ -102,11 +102,7 @@ Pre-registered railway employees eligible for discounted pricing, with device-le
 | :--- | :--- | :---: | :--- | :---: | :--- | :--- |
 | `employee_id` | VARCHAR(30) | No | — | PK | — | Railway Employee ID (`G084`, `SCR-1042`) |
 | `full_name` | VARCHAR(100) | No | — | — | — | Employee name |
-| `email` | VARCHAR(120) | Yes | — | — | — | Email address |
 | `phone` | VARCHAR(20) | Yes | — | — | — | Mobile phone number |
-| `department` | VARCHAR(100) | No | — | — | — | Department (`Running Staff`, `Commercial`) |
-| `designation` | VARCHAR(100) | No | — | — | — | Official designation |
-| `shift_policy` | VARCHAR(50) | Yes | `'Standard'` | — | — | Shift / duty roster |
 | `verification_status`| VARCHAR(20) | No | `'PENDING'` | — | `IN ('ACTIVE', 'PENDING', 'REJECTED')` | UMID verification state |
 | `device_name` | VARCHAR(100) | Yes | — | — | — | Bound phone model |
 | `device_token` | VARCHAR(100) | Yes | — | — | — | Unique device fingerprint |

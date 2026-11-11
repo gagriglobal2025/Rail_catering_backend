@@ -49,11 +49,7 @@ public class RailwayConcessionEmployee
 {
     public string EmployeeId { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
-    public string? Email { get; set; }
     public string? Phone { get; set; }
-    public string Department { get; set; } = string.Empty;
-    public string Designation { get; set; } = string.Empty;
-    public string ShiftPolicy { get; set; } = "Standard";
     public string VerificationStatus { get; set; } = "PENDING"; // ACTIVE, PENDING, REJECTED
     public string? DeviceName { get; set; }
     public string? DeviceToken { get; set; }
@@ -62,5 +58,36 @@ public class RailwayConcessionEmployee
     public string? RejectionReason { get; set; }
     public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
     public DateTime? VerifiedAt { get; set; }
+}
+
+public class Station
+{
+    public string StationId { get; set; } = string.Empty;
+    public string StationName { get; set; } = string.Empty;
+    public string StationCode { get; set; } = string.Empty;
+    public string? Platform { get; set; }
+    public string? Address { get; set; }
+    public int GeofenceRadiusM { get; set; } = 250;
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class PromotionalAd
+{
+    public string AdId { get; set; } = string.Empty;
+    public string Tag { get; set; } = "SPONSORED";
+    public string Sponsor { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string? Subtitle { get; set; }
+    public string CtaText { get; set; } = "Learn More";
+    public string? Href { get; set; }
+    public string BadgeColor { get; set; } = "#ea580c";
+    public string? BgGradient { get; set; }
+    public string? ImageUrl { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 

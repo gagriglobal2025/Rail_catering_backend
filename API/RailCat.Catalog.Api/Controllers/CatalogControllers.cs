@@ -235,6 +235,33 @@ public class EmployeesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = created.EmployeeId }, created);
     }
 
+    [HttpPost("upload-id-card")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadIdCard([FromForm] IFormFile file, [FromForm] string employeeId)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { message = "An identity card image file is required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(employeeId))
+        {
+            return BadRequest(new { message = "Employee ID is required." });
+        }
+
+        try
+        {
+            var url = await _concessionService.UploadIdCardImageAsync(file, employeeId);
+            return Ok(new { idCardUrl = url });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPut("{id}/status")]
     [Authorize(Roles = "ADMIN,STORE_MANAGER")]
     [ProducesResponseType(typeof(RailwayEmployeeResponseDto), StatusCodes.Status200OK)]
@@ -265,5 +292,168 @@ public class EmployeesController : ControllerBase
         var updated = await _concessionService.ToggleDeviceLockAsync(id, dto?.DeviceLocked);
         if (updated == null) return NotFound(new { message = $"Railway employee '{id}' not found." });
         return Ok(updated);
+    }
+}
+
+[ApiController]
+[Route("api/[controller]")]
+public class StationsController : ControllerBase
+{
+    private readonly IStationService _stationService;
+
+    public StationsController(IStationService stationService)
+    {
+        _stationService = stationService;
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(IEnumerable<StationResponseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll([FromQuery] bool? isActive)
+    {
+        var stations = await _stationService.GetAllAsync(isActive);
+        return Ok(stations);
+    }
+
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(StationResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(string id)
+    {
+        var station = await _stationService.GetByIdAsync(id);
+        if (station == null) return NotFound(new { message = $"Station '{id}' not found." });
+        return Ok(station);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "ADMIN,STORE_MANAGER")]
+    [ProducesResponseType(typeof(StationResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Create([FromBody] CreateStationDto dto)
+    {
+        var created = await _stationService.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = created.StationId }, created);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "ADMIN,STORE_MANAGER")]
+    [ProducesResponseType(typeof(StationResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Update(string id, [FromBody] UpdateStationDto dto)
+    {
+        var updated = await _stationService.UpdateAsync(id, dto);
+        if (updated == null) return NotFound(new { message = $"Station '{id}' not found." });
+        return Ok(updated);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "ADMIN")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Delete(string id)
+    {
+        var deleted = await _stationService.DeleteAsync(id);
+        if (!deleted) return NotFound(new { message = $"Station '{id}' not found." });
+        return NoContent();
+    }
+}
+
+[ApiController]
+[Route("api/[controller]")]
+public class AdsController : ControllerBase
+{
+    private readonly IAdService _adService;
+
+    public AdsController(IAdService adService)
+    {
+        _adService = adService;
+    }
+
+    [HttpGet]
+    [Authorize(Roles = "ADMIN,STORE_MANAGER")]
+    [ProducesResponseType(typeof(IEnumerable<AdResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAll([FromQuery] bool? isActive)
+    {
+        var ads = await _adService.GetAllAsync(isActive);
+        return Ok(ads);
+    }
+
+    [HttpGet("active")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(IEnumerable<AdResponseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActive()
+    {
+        var ads = await _adService.GetAllAsync(true);
+        return Ok(ads);
+    }
+
+    [HttpGet("{id}")]
+    [Authorize(Roles = "ADMIN,STORE_MANAGER")]
+    [ProducesResponseType(typeof(AdResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(string id)
+    {
+        var ad = await _adService.GetByIdAsync(id);
+        if (ad == null) return NotFound(new { message = $"Ad '{id}' not found." });
+        return Ok(ad);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "ADMIN,STORE_MANAGER")]
+    [ProducesResponseType(typeof(AdResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Create([FromForm] CreateAdDto dto)
+    {
+        try
+        {
+            var created = await _adService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = created.AdId }, created);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "ADMIN,STORE_MANAGER")]
+    [ProducesResponseType(typeof(AdResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Update(string id, [FromForm] UpdateAdDto dto)
+    {
+        try
+        {
+            var updated = await _adService.UpdateAsync(id, dto);
+            if (updated == null) return NotFound(new { message = $"Ad '{id}' not found." });
+            return Ok(updated);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "ADMIN")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Delete(string id)
+    {
+        var deleted = await _adService.DeleteAsync(id);
+        if (!deleted) return NotFound(new { message = $"Ad '{id}' not found." });
+        return NoContent();
     }
 }

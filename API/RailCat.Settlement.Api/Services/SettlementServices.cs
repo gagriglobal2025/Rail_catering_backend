@@ -1,3 +1,8 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using RailCat.Settlement.Api.Models.DTOs;
 using RailCat.Settlement.Api.Models.Entities;
 using RailCat.Settlement.Api.Repositories;
@@ -17,6 +22,12 @@ public interface IPaymentService
 {
     Task<PaymentResponseDto> ProcessPaymentAsync(ProcessPaymentRequestDto dto);
     Task<IEnumerable<PaymentResponseDto>> GetPaymentsAsync(Guid? shiftId, Guid? orderId, int limit = 50);
+}
+
+public interface IRazorpayService
+{
+    Task<RazorpayOrderResponseDto> CreateOrderAsync(CreateRazorpayOrderDto dto);
+    Task<PaymentResponseDto> VerifyAndRecordPaymentAsync(VerifyRazorpayPaymentDto dto);
 }
 
 public interface IReportService
@@ -152,7 +163,7 @@ public class PaymentService : IPaymentService
                 {
                     shift.UpiCollected += dto.Amount;
                 }
-                else if (dto.PaymentMethod == "CARD")
+                else if (dto.PaymentMethod == "CARD" || dto.PaymentMethod == "RAZORPAY")
                 {
                     shift.CardCollected += dto.Amount;
                 }
@@ -173,7 +184,7 @@ public class PaymentService : IPaymentService
 
         if (dto.PaymentMethod == "UPI") summary.UpiRevenue += dto.Amount;
         else if (dto.PaymentMethod == "CASH") summary.CashRevenue += dto.Amount;
-        else if (dto.PaymentMethod == "CARD") summary.CardRevenue += dto.Amount;
+        else if (dto.PaymentMethod == "CARD" || dto.PaymentMethod == "RAZORPAY") summary.CardRevenue += dto.Amount;
 
         await _reportRepo.UpdateSummaryAsync(summary);
 
@@ -247,5 +258,78 @@ public class ReportService : IReportService
             CashRevenue = summary.CashRevenue,
             CardRevenue = summary.CardRevenue
         };
+    }
+}
+
+public class RazorpayService : IRazorpayService
+{
+    private readonly HttpClient _http;
+    private readonly IPaymentService _paymentService;
+    private readonly string _keyId;
+    private readonly string _keySecret;
+
+    public RazorpayService(HttpClient http, IPaymentService paymentService, IConfiguration configuration)
+    {
+        _keyId = configuration["RazorpaySettings:KeyId"] ?? string.Empty;
+        _keySecret = configuration["RazorpaySettings:KeySecret"] ?? string.Empty;
+
+        _http = http;
+        _http.BaseAddress = new Uri("https://api.razorpay.com/v1/");
+        var authValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_keyId}:{_keySecret}"));
+        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authValue);
+
+        _paymentService = paymentService;
+    }
+
+    public async Task<RazorpayOrderResponseDto> CreateOrderAsync(CreateRazorpayOrderDto dto)
+    {
+        var amountInPaise = (long)Math.Round(dto.Amount * 100, MidpointRounding.AwayFromZero);
+        var payload = new
+        {
+            amount = amountInPaise,
+            currency = "INR",
+            receipt = dto.Receipt ?? $"rcpt_{DateTime.UtcNow.Ticks}"
+        };
+
+        var response = await _http.PostAsJsonAsync("orders", payload);
+        var body = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Razorpay order creation failed ({(int)response.StatusCode}): {body}");
+        }
+
+        using var doc = JsonDocument.Parse(body);
+        var razorpayOrderId = doc.RootElement.GetProperty("id").GetString() ?? string.Empty;
+
+        return new RazorpayOrderResponseDto
+        {
+            RazorpayOrderId = razorpayOrderId,
+            Amount = dto.Amount,
+            Currency = "INR",
+            KeyId = _keyId
+        };
+    }
+
+    public async Task<PaymentResponseDto> VerifyAndRecordPaymentAsync(VerifyRazorpayPaymentDto dto)
+    {
+        var payload = $"{dto.RazorpayOrderId}|{dto.RazorpayPaymentId}";
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_keySecret));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+        var generatedSignature = Convert.ToHexString(hash).ToLowerInvariant();
+
+        if (!string.Equals(generatedSignature, dto.RazorpaySignature, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UnauthorizedAccessException("Razorpay payment signature verification failed.");
+        }
+
+        return await _paymentService.ProcessPaymentAsync(new ProcessPaymentRequestDto
+        {
+            OrderId = dto.OrderId,
+            ShiftId = dto.ShiftId,
+            Amount = dto.Amount,
+            PaymentMethod = "RAZORPAY",
+            GatewayReference = dto.RazorpayPaymentId
+        });
     }
 }
