@@ -48,6 +48,26 @@ public class JwtHelper
 
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
+
+    public static (string rawToken, string tokenHash) GenerateRefreshToken()
+    {
+        var randomBytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        var rawToken = Convert.ToBase64String(randomBytes)
+            .Replace("+", "-")
+            .Replace("/", "_")
+            .TrimEnd('=');
+        var tokenHash = HashRefreshToken(rawToken);
+        return (rawToken, tokenHash);
+    }
+
+    public static string HashRefreshToken(string rawToken)
+    {
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(rawToken));
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
+    }
 }
 
 public static class PasswordHelper

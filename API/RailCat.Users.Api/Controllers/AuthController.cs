@@ -28,8 +28,39 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
     {
-        var response = await _authService.LoginAsync(request);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+        var response = await _authService.LoginAsync(request, ip, userAgent);
         return Ok(response);
+    }
+
+    /// <summary>
+    /// Refresh access token using a valid refresh token
+    /// </summary>
+    [HttpPost("refresh")]
+    [ProducesResponseType(typeof(RefreshTokenResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+        var response = await _authService.RefreshTokenAsync(request.RefreshToken, ip, userAgent);
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Explicitly revoke a refresh token
+    /// </summary>
+    [HttpPost("revoke")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> RevokeToken([FromBody] RevokeTokenRequestDto request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            await _authService.RevokeTokenAsync(request.RefreshToken);
+        }
+        return Ok(new { message = "Token revoked successfully." });
     }
 
     /// <summary>
@@ -90,8 +121,13 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> Logout([FromBody] RevokeTokenRequestDto? request = null)
     {
+        if (!string.IsNullOrWhiteSpace(request?.RefreshToken))
+        {
+            await _authService.RevokeTokenAsync(request.RefreshToken);
+        }
+
         var userId = GetCurrentUserId();
         if (userId != null)
         {

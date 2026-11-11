@@ -1,3 +1,4 @@
+
 using RailCat.Users.Api.Helpers;
 using RailCat.Users.Api.Models.DTOs.Auth;
 using RailCat.Users.Api.Models.DTOs.User;
@@ -18,7 +19,7 @@ public class AuthService : IAuthService
         _jwtHelper = jwtHelper;
     }
 
-    public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
+    public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request, string? ipAddress = null, string? userAgent = null)
     {
         var identifier = request.UserLogin?.Trim() ?? string.Empty;
         var user = await _userRepository.GetByIdentifierAsync(identifier);
@@ -45,11 +46,26 @@ public class AuthService : IAuthService
         await _userRepository.SaveChangesAsync();
 
         var (token, expiresAt) = _jwtHelper.GenerateToken(user);
+        var (rawRefreshToken, tokenHash) = JwtHelper.GenerateRefreshToken();
+        var refreshExpiresAt = DateTime.UtcNow.AddDays(7);
+
+        var session = new StaffSession
+        {
+            UserId = user.UserId,
+            TokenHash = tokenHash,
+            IpAddress = ipAddress,
+            UserAgent = userAgent,
+            ExpiresAt = refreshExpiresAt,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _userRepository.CreateSessionAsync(session);
 
         return new LoginResponseDto
         {
             Token = token,
             ExpiresAt = expiresAt,
+            RefreshToken = rawRefreshToken,
+            RefreshTokenExpiresAt = refreshExpiresAt,
             UserId = user.UserId,
             EmployeeId = user.EmployeeId,
             FullName = user.FullName,
@@ -58,6 +74,66 @@ public class AuthService : IAuthService
             Role = user.SystemRole,
             StationId = user.StationId
         };
+    }
+
+    public async Task<RefreshTokenResponseDto> RefreshTokenAsync(string refreshToken, string? ipAddress = null, string? userAgent = null)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            throw new UnauthorizedAccessException("Refresh token is required.");
+        }
+
+        var tokenHash = JwtHelper.HashRefreshToken(refreshToken.Trim());
+        var session = await _userRepository.GetSessionByTokenHashAsync(tokenHash);
+
+        if (session == null || session.ExpiresAt <= DateTime.UtcNow)
+        {
+            throw new UnauthorizedAccessException("Invalid or expired refresh token.");
+        }
+
+        var user = session.User ?? await _userRepository.GetByIdAsync(session.UserId);
+        if (user == null || user.AccountStatus != "ACTIVE")
+        {
+            throw new UnauthorizedAccessException("Account is disabled or inactive.");
+        }
+
+        // Refresh token rotation: delete used session
+        await _userRepository.DeleteSessionAsync(session.SessionId);
+
+        // Issue new token pair
+        var (newToken, newExpiresAt) = _jwtHelper.GenerateToken(user);
+        var (newRawRefreshToken, newTokenHash) = JwtHelper.GenerateRefreshToken();
+        var newRefreshExpiresAt = DateTime.UtcNow.AddDays(7);
+
+        var newSession = new StaffSession
+        {
+            UserId = user.UserId,
+            TokenHash = newTokenHash,
+            IpAddress = ipAddress,
+            UserAgent = userAgent,
+            ExpiresAt = newRefreshExpiresAt,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _userRepository.CreateSessionAsync(newSession);
+
+        user.LastActiveAt = DateTime.UtcNow;
+        await _userRepository.SaveChangesAsync();
+
+        return new RefreshTokenResponseDto
+        {
+            Token = newToken,
+            ExpiresAt = newExpiresAt,
+            RefreshToken = newRawRefreshToken,
+            RefreshTokenExpiresAt = newRefreshExpiresAt
+        };
+    }
+
+    public async Task<bool> RevokeTokenAsync(string refreshToken)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken)) return false;
+        var tokenHash = JwtHelper.HashRefreshToken(refreshToken.Trim());
+        await _userRepository.DeleteSessionByTokenHashAsync(tokenHash);
+        return true;
     }
 
     public async Task<UserProfileResponseDto> GetProfileAsync(Guid userId)

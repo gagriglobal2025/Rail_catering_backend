@@ -237,23 +237,24 @@ public class EmployeesController : ControllerBase
 
     [HttpPost("upload-id-card")]
     [AllowAnonymous]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UploadIdCard([FromForm] IFormFile file, [FromForm] string employeeId)
+    public async Task<IActionResult> UploadIdCard([FromForm] UploadIdCardDto dto)
     {
-        if (file == null || file.Length == 0)
+        if (dto.File == null || dto.File.Length == 0)
         {
             return BadRequest(new { message = "An identity card image file is required." });
         }
 
-        if (string.IsNullOrWhiteSpace(employeeId))
+        if (string.IsNullOrWhiteSpace(dto.EmployeeId))
         {
             return BadRequest(new { message = "Employee ID is required." });
         }
 
         try
         {
-            var url = await _concessionService.UploadIdCardImageAsync(file, employeeId);
+            var url = await _concessionService.UploadIdCardImageAsync(dto.File, dto.EmployeeId);
             return Ok(new { idCardUrl = url });
         }
         catch (ArgumentException ex)

@@ -88,6 +88,39 @@ public class UserRepository : IUserRepository
         }
     }
 
+    public async Task CreateSessionAsync(StaffSession session)
+    {
+        await _context.StaffSessions.AddAsync(session);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<StaffSession?> GetSessionByTokenHashAsync(string tokenHash)
+    {
+        return await _context.StaffSessions
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.TokenHash == tokenHash);
+    }
+
+    public async Task DeleteSessionAsync(Guid sessionId)
+    {
+        var session = await _context.StaffSessions.FindAsync(sessionId);
+        if (session != null)
+        {
+            _context.StaffSessions.Remove(session);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task DeleteSessionByTokenHashAsync(string tokenHash)
+    {
+        var session = await _context.StaffSessions.FirstOrDefaultAsync(s => s.TokenHash == tokenHash);
+        if (session != null)
+        {
+            _context.StaffSessions.Remove(session);
+            await _context.SaveChangesAsync();
+        }
+    }
+
     public async Task SaveChangesAsync()
     {
         await _context.SaveChangesAsync();

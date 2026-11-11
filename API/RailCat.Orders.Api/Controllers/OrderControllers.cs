@@ -8,7 +8,6 @@ namespace RailCat.Orders.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "ADMIN,STORE_MANAGER,COUNTER_OPERATOR")]
 public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orderService;
@@ -19,6 +18,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "ADMIN,STORE_MANAGER,COUNTER_OPERATOR")]
     [ProducesResponseType(typeof(IEnumerable<OrderResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? status,
@@ -61,6 +61,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/payment")]
+    [Authorize(Roles = "ADMIN,STORE_MANAGER,COUNTER_OPERATOR")]
     [ProducesResponseType(typeof(OrderResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AcceptPayment(Guid id, [FromBody] AcceptOrderPaymentDto dto)
@@ -71,6 +72,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/status")]
+    [Authorize(Roles = "ADMIN,STORE_MANAGER,COUNTER_OPERATOR")]
     [ProducesResponseType(typeof(OrderResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateOrderStatus(Guid id, [FromBody] UpdateOrderStatusDto dto)
