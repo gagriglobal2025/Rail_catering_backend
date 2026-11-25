@@ -42,10 +42,14 @@ public class UpdateConcessionPolicyValidator : AbstractValidator<UpdateConcessio
 
 public class EmployeeStatusUpdateValidator : AbstractValidator<EmployeeStatusUpdateDto>
 {
+    private static readonly string[] AllowedStatuses = ["ACTIVE", "ACCEPTED", "APPROVED", "REJECTED", "PENDING"];
+
     public EmployeeStatusUpdateValidator()
     {
-        RuleFor(x => x.Status).Must(s => s == "ACTIVE" || s == "REJECTED" || s == "PENDING")
-            .WithMessage("Status must be ACTIVE, REJECTED, or PENDING.");
+        RuleFor(x => x.Status)
+            .NotEmpty().WithMessage("Status is required.")
+            .Must(s => !string.IsNullOrWhiteSpace(s) && AllowedStatuses.Contains(s.Trim().ToUpperInvariant()))
+            .WithMessage("Status must be ACTIVE (or ACCEPTED), REJECTED, or PENDING.");
     }
 }
 
